@@ -6,7 +6,7 @@ extern crate regex;
 
 // TODO
 fn main() {
-    let token = authentication::get_oauth_token();
+    let token = authentication::get_oauth_token_or_panic();
     println!("{}", token);
 }
 
@@ -23,7 +23,7 @@ mod authentication {
 
     type AuthCode = String;
 
-    pub fn get_oauth_token() -> AuthCode {
+    pub fn get_oauth_token_or_panic() -> AuthCode {
         Command::new("xdg-open").arg("https://slack.com/oauth/authorize?client_id=2334733471.3592055147").output().unwrap();
         let server = Server::http(Ipv4Addr(127, 0, 0, 1), 9999);
 
@@ -50,9 +50,18 @@ mod authentication {
     }
 
     fn extract_auth_code(path: &str) -> Result<AuthCode, &'static str> {
-        let re = Regex::new(r"code=(.+?)(&|$)").unwrap();
+        let re = try!(Regex::new(r"code=(.+?)(&|$)"));
+        // Alternative example with map:
+        // re.captures(path).map_or(Err("Expected authentication code"),
+        //     |captures| try!(captures.at(1)).to_string())
+        //
+        //  or:
+        //
+        // re.captures(path).and_then(
+        //   |captures| try!(captures.at(1)).to_string())
+        // .or(Err("Expected authentication code")
         match re.captures(path) {
-            Some(captures) => Ok(captures.at(1).unwrap().to_string()),
+            Some(captures) => Ok(try!(captures.at(1)).to_string()),
             None => Err("Expected authentication code.")
         }
     }
