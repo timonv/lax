@@ -10,6 +10,7 @@ fn main() {
     println!("{}", token);
 }
 
+// Temp
 mod authentication {
     // Authentication
     use std::old_io::net::ip::Ipv4Addr;
@@ -50,7 +51,7 @@ mod authentication {
     }
 
     fn extract_auth_code(path: &str) -> Result<AuthCode, &'static str> {
-        let re = try!(Regex::new(r"code=(.+?)(&|$)"));
+        let re = Regex::new(r"code=(.+?)(&|$)").unwrap();
         // Alternative example with map:
         // re.captures(path).map_or(Err("Expected authentication code"),
         //     |captures| try!(captures.at(1)).to_string())
@@ -60,8 +61,9 @@ mod authentication {
         // re.captures(path).and_then(
         //   |captures| try!(captures.at(1)).to_string())
         // .or(Err("Expected authentication code")
+        // 
         match re.captures(path) {
-            Some(captures) => Ok(try!(captures.at(1)).to_string()),
+            Some(captures) => Ok(captures.at(1).unwrap().to_string()),
             None => Err("Expected authentication code.")
         }
     }
