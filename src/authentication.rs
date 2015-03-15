@@ -6,12 +6,12 @@ use regex::Regex;
 use serialize::json;
 use std::fs;
 use std::io::prelude::*;
-use std::net::IpAddr;
+use std::net::Ipv4Addr;
 use std::old_io::Command;
 use std::sync::Mutex;
 use std::sync::mpsc::channel;
 
-type AuthToken = String;
+pub type AuthToken = String;
 type TempCode = String;
 
 #[allow(dead_code)]
@@ -61,7 +61,7 @@ fn store_token(token: &AuthToken) {
 
 #[allow(dead_code)] // Hard to test
 fn request_temp_code() -> (TempCode, Listening) {
-    Command::new("xdg-open").arg(format!("https://slack.com/oauth/authorize?client_id={}", SLACK_CLIENT_ID)).output().unwrap();
+    Command::new("xdg-open").arg(format!("https://slack.com/oauth/authorize?scope=client&client_id={}", SLACK_CLIENT_ID)).output().unwrap();
 
     let (tx, rx) = channel();
     let mtx = Mutex::new(tx);
@@ -84,7 +84,7 @@ fn request_temp_code() -> (TempCode, Listening) {
         res.end().unwrap();
     });
 
-    let mut guard = server.listen(IpAddr::new_v4(127, 0, 0, 1), 9999).unwrap();
+    let mut guard = server.listen("127.0.0.1:9999").unwrap();
 
     let tempcode = rx.recv().unwrap();
     guard.close().unwrap();
