@@ -21,12 +21,8 @@ fn main() {
     let (token,_guard) = authentication::get_oauth_token_or_panic();
     let slack_stream = messages_stream::establish_stream(&token);
     println!("Connection established!");
-    loop {
-        let input = stdin()
-            .read_line()
-            .ok()
-            .expect("WHAT ARE YOU DOING");
-
-        slack_stream.send_raw_message(input);
+    for message in slack_stream.into_iter() {
+        println!("{}", message)
     }
+    println!("Server closed!")
 }

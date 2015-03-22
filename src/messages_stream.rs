@@ -7,7 +7,7 @@
 use std::io::prelude::*;
 use serialize::json;
 use std::thread;
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver, Iter};
 use std::sync::{Arc, RwLock};
 
 // extern
@@ -33,7 +33,8 @@ pub struct SlackStream<'a> {
     // of the thread here as well. fml
     _receiver_guard: thread::JoinGuard<'a, ()>,
     _sender_guard: thread::JoinGuard<'a, ()>,
-    _message_sender: Sender<Message>,
+    _outgoing_sender: Sender<Message>,
+    _incoming_receiver: Receiver<String>,
 }
 
 pub fn establish_stream(authtoken: &str) -> SlackStream  {
@@ -47,15 +48,22 @@ pub fn establish_stream(authtoken: &str) -> SlackStream  {
     response.validate().unwrap(); // validate the response (check wss frames, idk?)
 
     let (mut sender, mut receiver) = response.begin().split();
-    let (tx, rx) = channel::<Message>();
 
-    let send_guard = spawn_send_loop(sender, rx);
-    let receiver_guard = spawn_receive_loop(receiver, tx.clone());
+    // Outgoing messages are send via the sender, to the receiver, to websockets
+    let (outgoing_sender, outgoing_receiver) = channel::<Message>();
+
+    // Incoming messages are send via websockets to the sender, to the receiver, to the consumer
+    // (i.e. UI)
+    let (incoming_sender, incoming_receiver) = channel::<String>();
+
+    let send_guard = spawn_send_loop(sender, outgoing_receiver);
+    let receiver_guard = spawn_receive_loop(receiver, outgoing_sender.clone(), incoming_sender);
 
     SlackStream {
         _receiver_guard: receiver_guard,
         _sender_guard: send_guard,
-        _message_sender: tx,
+        _outgoing_sender: outgoing_sender,
+        _incoming_receiver: incoming_receiver
     }
 }
 
@@ -68,10 +76,10 @@ fn request_realtime_messaging(authtoken: &str) -> json::Json {
     json::from_str(&body).unwrap()
 }
 
-fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, message_receiver: Receiver<Message>) -> thread::JoinGuard<'a, ()> {
+fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_receiver: Receiver<Message>) -> thread::JoinGuard<'a, ()> {
     let send_guard = thread::scoped(move || {
         loop {
-            let message = match message_receiver.recv() {
+            let message = match outgoing_receiver.recv() {
                 Ok(m) => m,
                 Err(e) => {
                     println!("Send Loop: {:?}", e);
@@ -102,14 +110,18 @@ fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, message_recei
     send_guard
 }
 
-fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, message_sender: Sender<Message>) -> thread::JoinGuard<'a, ()> {
+fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<String>) -> thread::JoinGuard<'a, ()> {
     // Double thread to keep receiver alive
     // Previously crashed because ssl
     thread::scoped(move || {
         let arw_wss = Arc::new(RwLock::new(wss_receiver));
         loop {
+
             let arw_wss = arw_wss.clone();
-            let message_sender_for_thread = message_sender.clone();
+
+            let outgoing_sender = outgoing_sender.clone();
+            let incoming_sender = incoming_sender.clone();
+
             let guard = thread::spawn(move || {
                 let mut wss_receiver = match arw_wss.write() {
                     Ok(v) => v,
@@ -129,7 +141,7 @@ fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, messag
 
                     match message {
                         Message::Close(_) => {
-                            let _ = match message_sender_for_thread.send(Message::Close(None)) {
+                            let _ = match outgoing_sender.send(Message::Close(None)) {
                                 Ok(()) => {
                                     println!("Received close message and server closed!");
                                     return; // Closing thread
@@ -141,7 +153,7 @@ fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, messag
                             };
                         },
                         // Ping keeps the connection alive
-                        Message::Ping(data) => match message_sender_for_thread.send(Message::Pong(data)) {
+                        Message::Ping(data) => match outgoing_sender.send(Message::Pong(data)) {
                             Ok(()) => (),
                             Err(e) => {
                                 println!("Receive failed ping message: {:?}", e);
@@ -149,7 +161,9 @@ fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, messag
                             }
 
                         },
-                        _ => println!("Received: {:?}", message),
+                        Message::Text(text_message) => incoming_sender.send(text_message).unwrap(),
+
+                        _ => panic!("Unknown message received from server!")
                     }
                 }
 
@@ -163,7 +177,7 @@ fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, messag
 }
 
 impl<'a> SlackStream<'a> {
-    pub fn send_raw_message(&self, message: String) {
+    pub fn send_text_message(&self, message: String) {
         let trimmed = message.trim();
 
         // let message = match trimmed {
@@ -177,12 +191,17 @@ impl<'a> SlackStream<'a> {
         // };
 
         let message = Message::Text(trimmed.to_string());
-        match self._message_sender.send(message) {
+        match self._outgoing_sender.send(message) {
             Ok(()) => (),
             Err(e) => {
                 println!("Main Loop: {:?}", e);
             }
         }
+    }
+
+    // Just returns the underlying receiving iter
+    pub fn into_iter(&self) -> Iter<String> {
+        self._incoming_receiver.iter()
     }
 }
 
