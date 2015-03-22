@@ -19,7 +19,6 @@ use websocket::client::receiver::Receiver as WssReceiver;
 use websocket::Receiver as WssReceiverTrait;
 // use websocket::Sender as WssSender;
 // use websocket::Receiver as WssReceiver;
-use websocket::dataframe::DataFrame;
 use websocket::client::request::Url;
 use websocket::stream::WebSocketStream;
 
@@ -47,7 +46,7 @@ pub fn establish_stream(authtoken: &str) -> SlackStream  {
     let response = request.send().unwrap(); // send request and retrieve response
     response.validate().unwrap(); // validate the response (check wss frames, idk?)
 
-    let (mut sender, mut receiver) = response.begin().split();
+    let (sender, receiver) = response.begin().split();
 
     // Outgoing messages are send via the sender, to the receiver, to websockets
     let (outgoing_sender, outgoing_receiver) = channel::<Message>();
@@ -71,7 +70,7 @@ fn request_realtime_messaging(authtoken: &str) -> json::Json {
     let mut client = HttpClient::new();
     let mut res = client.get(format!("https://slack.com/api/rtm.start?token={}", authtoken).as_slice()).send().unwrap();
     let mut body = String::new();
-    res.read_to_string(&mut body);
+    res.read_to_string(&mut body).unwrap();
 
     json::from_str(&body).unwrap()
 }
@@ -110,7 +109,7 @@ fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_rece
     send_guard
 }
 
-fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<String>) -> thread::JoinGuard<'a, ()> {
+fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<String>) -> thread::JoinGuard<'a, ()> {
     // Double thread to keep receiver alive
     // Previously crashed because ssl
     thread::scoped(move || {

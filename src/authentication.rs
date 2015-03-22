@@ -6,8 +6,7 @@ use regex::Regex;
 use serialize::json;
 use std::fs;
 use std::io::prelude::*;
-use std::net::Ipv4Addr;
-use std::old_io::Command;
+use std::process::Command;
 use std::sync::Mutex;
 use std::sync::mpsc::channel;
 
