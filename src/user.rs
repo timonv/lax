@@ -2,13 +2,13 @@ use serialize::json::{self, Json, DecodeResult};
 
 // Deprecated but RustcDecodable fails, wat
 #[derive(Decodable)]
-struct User {
-    id: String,
-    name: String,
-    color: String
+pub struct User {
+    pub id: String,
+    pub name: String,
+    pub color: Option<String>
 }
 
-fn new_user_from_json(json: &str) -> DecodeResult<User> {
+pub fn new_user_from_json(json: &str) -> DecodeResult<User> {
     json::decode::<User>(json)
 }
 
@@ -26,7 +26,7 @@ mod test {
         let user = new_user_from_json(json).unwrap();
         assert_eq!(user.id, "banana");
         assert_eq!(user.name, "Timon");
-        assert_eq!(user.color, "#000000");
+        assert_eq!(user.color.unwrap(), "#000000");
     }
 }
 

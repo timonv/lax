@@ -14,6 +14,7 @@ mod user_view;
 mod user;
 mod message;
 mod channel;
+mod current_state;
 
 #[allow(dead_code)]
 fn main() {

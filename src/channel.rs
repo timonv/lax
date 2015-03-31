@@ -2,14 +2,14 @@ use serialize::json::{self, Json, DecodeResult};
 
 // Deprecated but RustcDecodable fails, wat
 #[derive(Decodable)]
-struct Channel {
+pub struct Channel {
     id: String,
     name: String,
     members: Vec<String>,
     is_member: bool
 }
 
-fn new_channel_from_json(json: &str) -> DecodeResult<Channel> {
+pub fn new_channel_from_json(json: &str) -> DecodeResult<Channel> {
     json::decode::<Channel>(json)
 }
 
