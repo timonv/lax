@@ -28,16 +28,17 @@ use websocket::stream::WebSocketStream;
 // ... not really a stream
 // More like a guard with extras
 pub struct SlackStream<'a> {
-    // TODO Figure out why I need to pass the return type
-    // of the thread here as well. fml
+    // pub initial_state: Json,
+
+    // TODO Threadpool
     _receiver_guard: thread::JoinGuard<'a, ()>,
     _sender_guard: thread::JoinGuard<'a, ()>,
+
     _outgoing_sender: Sender<Message>,
     _incoming_receiver: Receiver<String>,
 }
 
 pub fn establish_stream(authtoken: &str) -> SlackStream  {
-    // TODO Place all my pretty data in a struct
     let json = request_realtime_messaging(authtoken);
 
     // As per example
@@ -59,6 +60,7 @@ pub fn establish_stream(authtoken: &str) -> SlackStream  {
     let receiver_guard = spawn_receive_loop(receiver, outgoing_sender.clone(), incoming_sender);
 
     SlackStream {
+        // initial_state: json,
         _receiver_guard: receiver_guard,
         _sender_guard: send_guard,
         _outgoing_sender: outgoing_sender,

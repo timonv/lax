@@ -1,65 +1,54 @@
-use serialize::json;
-use std::fmt;
+// use serialize::json;
+// use std::fmt;
 
-pub struct UserView;
+// pub struct UserView {
+//     state: CurrentState
+// }
 
-// TODO Message needs to be normalized first
-struct Message {
-    event_type: String,
-    user: String,
-    text: String,
-    ts: String,
-    channel: String
-}
+// pub fn new() -> UserView {
+//     UserView {
+//         state: new_empty_state()
+//     }
+// }
 
-pub fn new() -> UserView {
-    UserView
-}
+// fn new_empty_state() -> CurrentState {
+//     CurrentState {
+//         me: None,
+//         channels: None,
+//         current_channel: None
+//     }
+// }
 
-impl UserView {
-    pub fn print_message(&self, message: String) {
-       let message = self.normalize(message);
-       println!("{}", message);
-    }
+// impl UserView {
+//     pub fn print_message(&self, message: String) {
+//        let message = self.normalize_from_json(message).unwrap();
+//        println!("{}", message);
+//     }
 
-    // TODO clean up and make -> Result<Message, E>
-    // Needs more validation, requirements depend on event
-    // Working with empty strings because lazy
-    // Event needs to be an enum
-    fn normalize(&self, message: String) -> Message {
-        let json = json::from_str(&message).unwrap();
+//     pub fn update_state(&mut self, json: Json) {
+//         self.state = state.update(json);
+//     }
 
-        Message {
-            event_type: value_from_json(&json, "type"),
-            ts: value_from_json(&json, "ts"),
-            user: value_from_json(&json, "user"),
-            text: value_from_json(&json, "text"),
-            channel: value_from_json(&json, "channel")
-        }
-    }
-}
+//     fn normalize_from_json(&self, message: String) -> Result<Message, E> {
+//         let message: Message = json::decode(&message);
+//         message
+//     }
+// }
 
-fn value_from_json(json: &json::Json, key: &str) -> String {
-    json.find(key)
-        .and_then(|json| json.as_string() )
-        .unwrap_or("")
-        .to_string()
-}
+// impl fmt::Display for Message {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         let text = match self.event_type.as_slice() {
+//             "message" => {
+//                 // let channel = self.channel.clone().expect("Expected channel for message");
+//                 format!("{ts} - #{channel} {user}: {text}",
+//                         ts=self.ts, channel=self.channel, user=self.user, text=self.text)
+//             },
+//             _ => format!("DEBUG: {ts} {type} {text}", type=self.event_type, ts=self.ts, text=self.text)
+//         };
 
-impl fmt::Display for Message {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let text = match self.event_type.as_slice() {
-            "message" => {
-                // let channel = self.channel.clone().expect("Expected channel for message");
-                format!("{ts} - #{channel} {user}: {text}",
-                        ts=self.ts, channel=self.channel, user=self.user, text=self.text)
-            },
-            _ => format!("DEBUG: {ts} {type} {text}", type=self.event_type, ts=self.ts, text=self.text)
-        };
-
-        write!(f, "{}", text)
-    }
-}
+//         write!(f, "{}", text)
+//     }
+// }
 
 // Meh...
 // impl fmt::Display for Option<String> {

@@ -8,3 +8,4 @@ authors = ["Timon Vonk <timonv@gmail.com>"]
 regex = "*"
 hyper = "*"
 websocket = "*"
+rustc-serialize = "*"
