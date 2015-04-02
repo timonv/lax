@@ -1,38 +1,51 @@
 use serialize::json::{self, Json, DecodeResult};
+use serialize::{Decodable, Decoder};
 
-// Deprecated but RustcDecodable fails, wat
-#[derive(Decodable)]
-struct Message {
-    event_type: String,
-    user: String,
-    text: String,
-    ts: String,
-    channel: String
+pub struct Message {
+    pub event_type: Option<String>,// TODO Enum
+    pub user: Option<String>,
+    pub text: Option<String>,
+    pub ts: Option<String>,
+    pub channel: Option<String>
 }
 
-fn new_message_from_json(json: &str) -> DecodeResult<Message> {
-    json::decode::<Message>(json)
+pub fn new_message_from_str(payload: &str) -> DecodeResult<Message> {
+    json::decode::<Message>(payload)
+}
+
+impl Decodable for Message {
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<Message, D::Error> {
+        decoder.read_struct("root", 0, |decoder| {
+            Ok(Message {
+                event_type: try!(decoder.read_struct_field("type", 0, |decoder| Decodable::decode(decoder))),
+                user: try!(decoder.read_struct_field("user", 0, |decoder| Decodable::decode(decoder))),
+                text: try!(decoder.read_struct_field("text", 0, |decoder| Decodable::decode(decoder))),
+                ts: try!(decoder.read_struct_field("ts", 0, |decoder| Decodable::decode(decoder))),
+                channel: try!(decoder.read_struct_field("channel", 0, |decoder| Decodable::decode(decoder))),
+            })
+        })
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use super::new_message_from_json;
+    use super::new_message_from_str;
 
     #[test]
     fn test_decode_from_json() {
         let json = "{
-            \"event_type\": \"message\",
+            \"type\": \"message\",
             \"user\": \"Timon\",
             \"text\": \"Bananas!\",
             \"ts\": \"today\",
             \"channel\": \"banter\"
         }";
-        let message = new_message_from_json(json).unwrap();
-        assert_eq!(message.event_type, "message");
-        assert_eq!(message.user, "Timon");
-        assert_eq!(message.text, "Bananas!");
-        assert_eq!(message.ts, "today");
-        assert_eq!(message.channel, "banter");
+        let message = new_message_from_str(json).unwrap();
+        assert_eq!(message.event_type.unwrap(), "message");
+        assert_eq!(message.user.unwrap(), "Timon");
+        assert_eq!(message.text.unwrap(), "Bananas!");
+        assert_eq!(message.ts.unwrap(), "today");
+        assert_eq!(message.channel.unwrap(), "banter");
     }
 }
 
