@@ -28,7 +28,7 @@ use websocket::stream::WebSocketStream;
 // ... not really a stream
 // More like a guard with extras
 pub struct SlackStream<'a> {
-    // pub initial_state: Json,
+    pub initial_state: String,
 
     // TODO Threadpool
     _receiver_guard: thread::JoinGuard<'a, ()>,
@@ -39,7 +39,8 @@ pub struct SlackStream<'a> {
 }
 
 pub fn establish_stream(authtoken: &str) -> SlackStream  {
-    let json = request_realtime_messaging(authtoken);
+    let initial_state = request_realtime_messaging(authtoken);
+    let json = json::from_str(&initial_state).unwrap();
 
     // As per example
     let wss_url = Url::parse(json.find("url").unwrap().as_string().unwrap()).unwrap();
@@ -60,7 +61,7 @@ pub fn establish_stream(authtoken: &str) -> SlackStream  {
     let receiver_guard = spawn_receive_loop(receiver, outgoing_sender.clone(), incoming_sender);
 
     SlackStream {
-        // initial_state: json,
+        initial_state: initial_state,
         _receiver_guard: receiver_guard,
         _sender_guard: send_guard,
         _outgoing_sender: outgoing_sender,
@@ -68,13 +69,13 @@ pub fn establish_stream(authtoken: &str) -> SlackStream  {
     }
 }
 
-fn request_realtime_messaging(authtoken: &str) -> json::Json {
+fn request_realtime_messaging(authtoken: &str) -> String {
     let mut client = HttpClient::new();
     let mut res = client.get(format!("https://slack.com/api/rtm.start?token={}", authtoken).as_slice()).send().unwrap();
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
 
-    json::from_str(&body).unwrap()
+    body
 }
 
 fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_receiver: Receiver<Message>) -> thread::JoinGuard<'a, ()> {
@@ -131,6 +132,7 @@ fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_s
                         return;
                     }
                 };
+
                 for message in wss_receiver.incoming_messages::<Message>() {
                     let message = match message {
                         Ok(m) => m,
@@ -201,7 +203,7 @@ impl<'a> SlackStream<'a> {
     }
 
     // Just returns the underlying receiving iter
-    pub fn into_iter(&self) -> Iter<String> {
+    pub fn iter(&self) -> Iter<String> {
         self._incoming_receiver.iter()
     }
 }
