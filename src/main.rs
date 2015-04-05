@@ -16,7 +16,7 @@ mod message;
 mod channel;
 mod current_state;
 
-use current_state::new_current_state_from_json;
+use current_state::new_current_state_from_str;
 use message::new_message_from_str;
 
 #[allow(dead_code)]
@@ -24,7 +24,7 @@ fn main() {
     let (token,_guard) = authentication::get_oauth_token_or_panic();
 
     let slack_stream = messages_stream::establish_stream(&token);
-    let current_state = new_current_state_from_json(&slack_stream.initial_state);
+    let current_state = new_current_state_from_str(&slack_stream.initial_state);
     for message in slack_stream.iter() {
         match new_message_from_str(&message) {
             Ok(message) => {
