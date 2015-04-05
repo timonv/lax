@@ -13,7 +13,7 @@ pub struct CurrentState {
 pub fn new_current_state_from_json(json: &str) -> CurrentState {
     CurrentState {
         me: extract_me(&json),
-        channels: vec![],
+        channels: extract_channels(&json),
         users: extract_users(&json)
     }
 }
@@ -35,9 +35,22 @@ fn extract_users(json: &str) -> Vec<User> {
     }).collect()
 }
 
+fn extract_channels(json: &str) -> Vec<Channel> {
+    // Hideous, maybe better to just manually implement decodable?
+    // also use try! instead.
+    let json = json::from_str(json).unwrap();
+    json.find("channels").unwrap().as_array().unwrap().iter().map(|channel| {
+        new_channel_from_json(json::encode(channel.as_object().unwrap()).unwrap().as_slice()).unwrap()
+    }).collect()
+}
+
 impl CurrentState {
     pub fn user_id_to_user(&self, id: &str) -> Option<&User> {
         self.users.iter().find(|user| user.id == id)
+    }
+    
+    pub fn channel_id_to_channel(&self, id: &str) -> Option<&Channel> {
+        self.channels.iter().find(|channel| channel.id == id)
     }
 }
 
@@ -47,55 +60,27 @@ mod test {
 
     #[test]
     fn test_new_current_state_from_json() {
-        let state = new_current_state_from_json(generate_json().as_slice());
+        let state = new_current_state_from_json(&generate_json());
         assert_eq!(state.me.name, "bobby");
-    }
-
-    #[test]
-    fn test_new_current_state_with_user() {
-        let state = new_current_state_from_json(generate_json_with_users().as_slice());
         assert_eq!(state.users[0].name, "Matijs");
+        assert_eq!(state.channels[0].name, "General");
     }
 
     #[test]
     fn test_id_to_user() {
-        let state = new_current_state_from_json(generate_json_with_users().as_slice());
+        let state = new_current_state_from_json(&generate_json());
         let user = state.user_id_to_user("xyz");
         assert_eq!(user.unwrap().name, "Matijs");
     }
 
-    fn generate_json() -> String {
-        "{
-            \"ok\": true,
-            \"url\": \"wss://ms9.slack-msgs.com/websocket/7I5yBpcvk\",
-            \"self\": {
-                \"id\": \"U023BECGF\",
-                \"name\": \"bobby\",
-                \"prefs\": {
-                },
-                \"created\": 1402463766,
-                \"manual_presence\": \"active\"
-            },
-            \"team\": {
-                \"id\": \"T024BE7LD\",
-                \"name\": \"Example Team\",
-                \"email_domain\": \"\",
-                \"domain\": \"example\",
-                \"msg_edit_window_mins\": -1,
-                \"over_storage_limit\": false,
-                \"prefs\": {
-                },
-                \"plan\": \"std\"
-            },
-            \"users\": [ ],
-            \"channels\": [ ],
-            \"groups\": [ ],
-            \"ims\": [ ],
-            \"bots\": [ ]
-        }".to_string()
+    #[test]
+    fn test_id_to_channel() {
+        let state = new_current_state_from_json(&generate_json());
+        let channel = state.channel_id_to_channel("zyx");
+        assert_eq!(channel.unwrap().name, "General");
     }
 
-    fn generate_json_with_users() -> String {
+    fn generate_json() -> String {
         "{
             \"ok\": true,
             \"url\": \"wss://ms9.slack-msgs.com/websocket/7I5yBpcvk\",
@@ -124,7 +109,14 @@ mod test {
                     \"name\": \"Matijs\"
                 }
             ],
-            \"channels\": [ ],
+            \"channels\": [
+                {
+                    \"id\": \"zyx\",
+                    \"name\": \"General\",
+                    \"members\": [],
+                    \"is_member\": false
+                } 
+            ],
             \"groups\": [ ],
             \"ims\": [ ],
             \"bots\": [ ]

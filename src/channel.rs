@@ -3,10 +3,10 @@ use serialize::json::{self, Json, DecodeResult};
 // Deprecated but RustcDecodable fails, wat
 #[derive(Decodable)]
 pub struct Channel {
-    id: String,
-    name: String,
-    members: Vec<String>,
-    is_member: bool
+    pub id: String,
+    pub name: String,
+    pub members: Vec<String>,
+    pub is_member: bool
 }
 
 pub fn new_channel_from_json(json: &str) -> DecodeResult<Channel> {
