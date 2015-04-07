@@ -1,7 +1,7 @@
 use serialize::json::{self, Json, DecodeResult};
 
 // Deprecated but RustcDecodable fails, wat
-#[derive(Decodable)]
+#[derive(Decodable, Clone)]
 pub struct Channel {
     pub id: String,
     pub name: String,

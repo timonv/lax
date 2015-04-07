@@ -1,6 +1,9 @@
 use serialize::json::{self, Json, DecodeResult};
 use serialize::{Decodable, Decoder};
 
+use user::User;
+use channel::Channel;
+
 // All EventTypes typed out into enum
 // Not used currently
 enum EventType {
@@ -63,11 +66,15 @@ enum EventType {
 }
 
 pub struct Message {
-    pub event_type: Option<String>,// TODO Enum
-    pub user: Option<String>,
-    pub text: Option<String>,
     pub ts: Option<String>,
-    pub channel: Option<String>
+    pub text: Option<String>,
+    pub user: Option<User>,
+    pub channel: Option<Channel>,
+    pub event_type: Option<String>,// TODO Enum
+    pub user_id: Option<String>,
+    pub channel_id: Option<String>,
+    // payload: String
+
 }
 
 pub fn new_message_from_str(payload: &str) -> DecodeResult<Message> {
@@ -79,10 +86,12 @@ impl Decodable for Message {
         decoder.read_struct("root", 0, |decoder| {
             Ok(Message {
                 event_type: try!(decoder.read_struct_field("type", 0, |decoder| Decodable::decode(decoder))),
-                user: try!(decoder.read_struct_field("user", 0, |decoder| Decodable::decode(decoder))),
+                user_id: try!(decoder.read_struct_field("user", 0, |decoder| Decodable::decode(decoder))),
                 text: try!(decoder.read_struct_field("text", 0, |decoder| Decodable::decode(decoder))),
                 ts: try!(decoder.read_struct_field("ts", 0, |decoder| Decodable::decode(decoder))),
-                channel: try!(decoder.read_struct_field("channel", 0, |decoder| Decodable::decode(decoder))),
+                channel_id: try!(decoder.read_struct_field("channel", 0, |decoder| Decodable::decode(decoder))),
+                channel: None,
+                user: None
             })
         })
     }
@@ -103,10 +112,10 @@ mod test {
         }";
         let message = new_message_from_str(json).unwrap();
         assert_eq!(message.event_type.unwrap(), "message");
-        assert_eq!(message.user.unwrap(), "Timon");
+        assert_eq!(message.user_id.unwrap(), "Timon");
+        assert_eq!(message.channel_id.unwrap(), "banter");
         assert_eq!(message.text.unwrap(), "Bananas!");
         assert_eq!(message.ts.unwrap(), "today");
-        assert_eq!(message.channel.unwrap(), "banter");
     }
 }
 

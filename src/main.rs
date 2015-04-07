@@ -25,25 +25,10 @@ fn main() {
 
     let slack_stream = messages_stream::establish_stream(&token);
     let current_state = new_current_state_from_str(&slack_stream.initial_state);
-    for message in slack_stream.iter() {
-        match new_message_from_str(&message) {
-            Ok(message) => {
-                match message.event_type.unwrap_or("".to_string()).as_ref() {
-                    "message" => {
-                        match current_state.user_id_to_user(&message.user.unwrap_or("".to_string())) {
-                            Some(user) => {
-                                println!("{} - {}: {}", message.channel.unwrap(), user.name, message.text.unwrap())
-                            },
-                            None => {
-                                println!("{} - {}: {}", message.channel.unwrap(), "UnknownUser", message.text.unwrap())
-                            }
-
-                        }
-                    },
-                    _ => println!("{}", message.text.unwrap_or("".to_string()))
-                }
-            },
-            Err(e) => println!("{}", e)
-        }
-    } 
+    // for raw_message in slack_stream.iter() {
+    //     match current_state.parse_incoming_message(&raw_message) {
+    //         Some(message) => println!(message),
+    //         None => ()
+    //     }
+    // } 
 }

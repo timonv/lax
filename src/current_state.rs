@@ -2,6 +2,7 @@ use serialize::json;
 
 use channel::{Channel, new_channel_from_str};
 use user::{User, new_user_from_str};
+use message::{Message, new_message_from_str};
 
 pub struct CurrentState {
     me: User,
@@ -52,6 +53,24 @@ impl CurrentState {
     pub fn channel_id_to_channel(&self, id: &str) -> Option<&Channel> {
         self.channels.iter().find(|channel| channel.id == id)
     }
+
+    pub fn parse_incoming_message(&self, raw: &str) -> json::DecodeResult<Message> {
+        let mut message = try!(new_message_from_str(&raw));
+        
+        match message.channel_id {
+            // I'm not sure I fully understand why the ref is needed.
+            // The value is borrowed, but isn't it returned after going out of scope?
+            Some(ref id) => message.channel = self.channel_id_to_channel(&id).map(|chan| chan.clone()),
+            None => ()
+        }
+
+        match message.user_id {
+            Some(ref id) => message.user = self.user_id_to_user(&id).map(|user| user.clone()),
+            None => ()
+        }
+
+        Ok(message)
+    }
 }
 
 #[cfg(test)]
@@ -78,6 +97,22 @@ mod test {
         let state = new_current_state_from_str(&generate_json());
         let channel = state.channel_id_to_channel("zyx");
         assert_eq!(channel.unwrap().name, "General");
+    }
+
+    #[test]
+    fn test_parse_incoming_message() {
+        let state = new_current_state_from_str(&generate_json());
+        let json = "{
+            \"type\": \"message\",
+            \"user\": \"xyz\",
+            \"text\": \"Bananas!\",
+            \"ts\": \"today\",
+            \"channel\": \"zyx\"
+        }";
+
+        let message = state.parse_incoming_message(&json).unwrap();
+        assert_eq!(message.channel.unwrap().name, "General");
+        assert_eq!(message.user.unwrap().name, "Matijs");
     }
 
     fn generate_json() -> String {
