@@ -1,5 +1,6 @@
 use serialize::json::{self, Json, DecodeResult};
 use serialize::{Decodable, Decoder};
+use std::fmt;
 
 use user::User;
 use channel::Channel;
@@ -65,6 +66,7 @@ enum EventType {
     TeamMigrationStarted
 }
 
+#[derive(Debug)]
 pub struct Message {
     pub ts: Option<String>,
     pub text: Option<String>,
@@ -94,6 +96,31 @@ impl Decodable for Message {
                 user: None
             })
         })
+    }
+}
+
+// Temporary method for debugging purposes.
+// Rendering is not the job of the message.
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO This is weird.
+        let formatted = match self.event_type.as_ref().unwrap_or(&"".to_string()).as_slice() {
+            "message" => self.fmt_as_message(),
+            _         => self.fmt_as_debug(),
+        };
+        write!(f, "{}", formatted)
+    }
+}
+
+impl Message {
+    fn fmt_as_message(&self) -> String {
+        let channel: &Channel = self.channel.as_ref().unwrap();
+        let user: &User = self.user.as_ref().unwrap();
+        format!("{channel} - {user}: {message}", channel=channel.name, user=user.name, message=self.text.as_ref().unwrap() )
+    }
+
+    fn fmt_as_debug(&self) -> String {
+        format!("DEBUG: {:?}", &self)
     }
 }
 

@@ -1,11 +1,11 @@
 use serialize::json::{self, Json, DecodeResult};
 
 // Deprecated but RustcDecodable fails, wat
-#[derive(Decodable, Clone)]
+#[derive(Decodable, Clone, Debug)]
 pub struct Channel {
     pub id: String,
     pub name: String,
-    pub members: Vec<String>,
+    pub members: Option<Vec<String>>, //wth can be missing?
     pub is_member: bool
 }
 
@@ -28,7 +28,7 @@ mod test {
         let channel = new_channel_from_str(json).unwrap();
         assert_eq!(channel.id, "banana");
         assert_eq!(channel.name, "banter");
-        assert_eq!(channel.members, vec!["Timon"]);
+        assert_eq!(channel.members.unwrap(), vec!["Timon"]);
         assert_eq!(channel.is_member, false);
     }
 }
