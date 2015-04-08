@@ -24,7 +24,7 @@ fn extract_me(json: &str) -> User {
     // also use try! instead.
     let json = json::from_str(json).unwrap();
     let val = json.find("self").unwrap();
-    new_user_from_str(json::encode(&val.as_object()).unwrap().as_slice()).unwrap()
+    new_user_from_str(json::encode(&val.as_object()).unwrap().as_ref()).unwrap()
 }
 
 fn extract_users(json: &str) -> Vec<User> {
@@ -32,7 +32,7 @@ fn extract_users(json: &str) -> Vec<User> {
     // also use try! instead.
     let json = json::from_str(json).unwrap();
     json.find("users").unwrap().as_array().unwrap().iter().map(|user| {
-        new_user_from_str(json::encode(user.as_object().unwrap()).unwrap().as_slice()).unwrap()
+        new_user_from_str(json::encode(user.as_object().unwrap()).unwrap().as_ref()).unwrap()
     }).collect()
 }
 
@@ -41,7 +41,7 @@ fn extract_channels(json: &str) -> Vec<Channel> {
     // also use try! instead.
     let json = json::from_str(json).unwrap();
     json.find("channels").unwrap().as_array().unwrap().iter().map(|channel| {
-        new_channel_from_str(json::encode(channel.as_object().unwrap()).unwrap().as_slice()).unwrap()
+        new_channel_from_str(json::encode(channel.as_object().unwrap()).unwrap().as_ref()).unwrap()
     }).collect()
 }
 

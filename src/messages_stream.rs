@@ -71,7 +71,7 @@ pub fn establish_stream(authtoken: &str) -> SlackStream  {
 
 fn request_realtime_messaging(authtoken: &str) -> String {
     let mut client = HttpClient::new();
-    let mut res = client.get(format!("https://slack.com/api/rtm.start?token={}", authtoken).as_slice()).send().unwrap();
+    let mut res = client.get(format!("https://slack.com/api/rtm.start?token={}", authtoken).as_ref()).send().unwrap();
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
 

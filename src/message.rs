@@ -1,70 +1,9 @@
-use serialize::json::{self, Json, DecodeResult};
+use serialize::json::{self, DecodeResult};
 use serialize::{Decodable, Decoder};
 use std::fmt;
 
 use user::User;
 use channel::Channel;
-
-// All EventTypes typed out into enum
-// Not used currently
-enum EventType {
-    Hello,
-    Message,
-    UserTyping,
-    ChannelMarked,
-    ChannelCreated,
-    ChannelJoined,
-    ChannelLeft,
-    ChannelDeleted,
-    ChannelRename,
-    ChannelArchive,
-    ChannelUnarchive,
-    ChannelHistoryChanged,
-    ImCreated,
-    ImOpen,
-    ImClose,
-    ImMarked,
-    ImHistoryChanged,
-    GroupJoined,
-    GroupLeft,
-    GroupOpen,
-    GroupClose,
-    GroupArchive,
-    GroupUnarchive,
-    GroupRename,
-    GroupMarked,
-    GroupHistoryChanged,
-    FileCreated,
-    FileShared,
-    FileUnshared,
-    FilePublic,
-    FilePrivate,
-    FileChange,
-    FileDeleted,
-    FileCommentAdded,
-    FileCommentEdited,
-    FileCommentDeleted,
-    PinAdded,
-    PinRemoved,
-    PresenceChange,
-    ManualPresenceChange,
-    PrefChange,
-    UserChange,
-    TeamJoin,
-    StarAdded,
-    StarRemoved,
-    EmojiChanged,
-    CommandsChanged,
-    TeamPlanChange,
-    TeamPrefChange,
-    TeamRename,
-    TeamDomainChange,
-    EmailDomainChange,
-    BotAdded,
-    BotChanged,
-    AccountsChanged,
-    TeamMigrationStarted
-}
 
 #[derive(Debug)]
 pub struct Message {
@@ -104,7 +43,7 @@ impl Decodable for Message {
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // TODO This is weird.
-        let formatted = match self.event_type.as_ref().unwrap_or(&"".to_string()).as_slice() {
+        let formatted = match self.event_type.as_ref().unwrap_or(&"".to_string()).as_ref() {
             "message" => self.fmt_as_message(),
             _         => self.fmt_as_debug(),
         };

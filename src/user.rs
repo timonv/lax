@@ -1,4 +1,4 @@
-use serialize::json::{self, Json, DecodeResult};
+use serialize::json::{self, DecodeResult};
 
 // Deprecated but RustcDecodable fails, wat
 #[derive(Decodable, Clone, Debug)]
