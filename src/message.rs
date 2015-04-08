@@ -18,7 +18,7 @@ pub struct Message {
 
 }
 
-pub fn new_message_from_str(payload: &str) -> DecodeResult<Message> {
+pub fn new_from_str(payload: &str) -> DecodeResult<Message> {
     json::decode::<Message>(payload)
 }
 
@@ -65,7 +65,7 @@ impl Message {
 
 #[cfg(test)]
 mod test {
-    use super::new_message_from_str;
+    use super::new_from_str;
 
     #[test]
     fn test_decode_from_json() {
@@ -76,7 +76,7 @@ mod test {
             \"ts\": \"today\",
             \"channel\": \"banter\"
         }";
-        let message = new_message_from_str(json).unwrap();
+        let message = new_from_str(json).unwrap();
         assert_eq!(message.event_type.unwrap(), "message");
         assert_eq!(message.user_id.unwrap(), "Timon");
         assert_eq!(message.channel_id.unwrap(), "banter");

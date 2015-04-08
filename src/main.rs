@@ -21,7 +21,7 @@ fn main() {
     let (token,_guard) = authentication::get_oauth_token_or_panic();
 
     let slack_stream = messages_stream::establish_stream(&token);
-    let current_state = current_state::new_current_state_from_str(&slack_stream.initial_state);
+    let current_state = current_state::new_from_str(&slack_stream.initial_state);
     for raw_message in slack_stream.iter() {
         match current_state.parse_incoming_message(&raw_message) {
             Ok(message) => println!("{}", message),

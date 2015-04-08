@@ -9,13 +9,13 @@ pub struct Channel {
     pub is_member: bool
 }
 
-pub fn new_channel_from_str(json: &str) -> DecodeResult<Channel> {
+pub fn new_from_str(json: &str) -> DecodeResult<Channel> {
     json::decode::<Channel>(json)
 }
 
 #[cfg(test)]
 mod test {
-    use super::new_channel_from_str;
+    use super::new_from_str;
 
     #[test]
     fn test_decode_from_str() {
@@ -25,7 +25,7 @@ mod test {
             \"members\": [\"Timon\"],
             \"is_member\": false
         }";
-        let channel = new_channel_from_str(json).unwrap();
+        let channel = new_from_str(json).unwrap();
         assert_eq!(channel.id, "banana");
         assert_eq!(channel.name, "banter");
         assert_eq!(channel.members.unwrap(), vec!["Timon"]);

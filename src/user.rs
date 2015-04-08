@@ -8,13 +8,13 @@ pub struct User {
     pub color: Option<String>
 }
 
-pub fn new_user_from_str(json: &str) -> DecodeResult<User> {
+pub fn new_from_str(json: &str) -> DecodeResult<User> {
     json::decode::<User>(json)
 }
 
 #[cfg(test)]
 mod test {
-    use super::new_user_from_str;
+    use super::new_from_str;
 
     #[test]
     fn test_decode_from_str() {
@@ -23,7 +23,7 @@ mod test {
             \"name\": \"Timon\",
             \"color\": \"#000000\"
         }";
-        let user = new_user_from_str(json).unwrap();
+        let user = new_from_str(json).unwrap();
         assert_eq!(user.id, "banana");
         assert_eq!(user.name, "Timon");
         assert_eq!(user.color.unwrap(), "#000000");
