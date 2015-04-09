@@ -60,12 +60,12 @@ impl CurrentState {
         match message.channel_id {
             // I'm not sure I fully understand why the ref is needed.
             // The value is borrowed, but isn't it returned after going out of scope?
-            Some(ref id) => message.channel = self.id_to_channel(&id).map(|chan| chan.clone()),
+            Some(ref id) => message.channel = self.id_to_channel(id).map(|chan| chan.clone()),
             None => ()
         }
 
         match message.user_id {
-            Some(ref id) => message.user = self.id_to_user(&id).map(|user| user.clone()),
+            Some(ref id) => message.user = self.id_to_user(id).map(|user| user.clone()),
             None => ()
         }
 
