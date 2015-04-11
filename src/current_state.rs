@@ -8,7 +8,6 @@ pub struct CurrentState {
     me: User,
     channels: Vec<Channel>,
     users: Vec<User>
-    // current_channel: Channel
 }
 
 pub fn new_from_str(json: &str) -> CurrentState {
