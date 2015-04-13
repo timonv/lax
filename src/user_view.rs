@@ -1,35 +1,42 @@
+use std::io;
 use std::thread;
-use std::sync::mpsc::{channel, Sender, Receiver, self};
+use std::sync::mpsc;
 
 use message::Message;
 
 pub struct UserView<'a> {
-    _incoming_sender: Sender<Message>,
-    _view_guard: thread::JoinGuard<'a, ()>
+    _input_recv: mpsc::Receiver<String>,
+    _input_guard: thread::JoinGuard<'a, ()>
 }
 
 pub fn start<'a>() -> UserView<'a> {
-    let (tx, rx) = channel::<Message>();
-    let view_guard = spawn_view(rx);
+    let (input_send, input_recv) = mpsc::channel::<String>();
 
     UserView {
-        _incoming_sender: tx,
-        _view_guard: view_guard
+        _input_recv: input_recv,
+        _input_guard: spawn_input(input_send),
     }
 }
 
 impl<'a> UserView<'a> {
-    pub fn incoming_message(&self, message: Message) -> Result<(), mpsc::SendError<Message>> {
-       self._incoming_sender.send(message)
+    pub fn incoming_message(&self, message: Message) -> Result<(), &'static str> {
+       println!("{}", message);
+       Ok(())
+    }
+
+    pub fn iter_user_input(&self) -> mpsc::Iter<String> {
+       self._input_recv.iter()
     }
 }
 
-fn spawn_view<'b>(rx: Receiver<Message>) -> thread::JoinGuard<'b, ()> {
+fn spawn_input<'b>(tx: mpsc::Sender<String>) -> thread::JoinGuard<'b, ()> {
    thread::scoped(move || {
-       loop {
-           let message = rx.recv().ok().expect("Failed to print message");
-           println!("{}", message);
-       }
+      let mut stdin = io::stdin();
+
+      loop {
+         let mut input: String = "".to_string();
+         stdin.read_line(&mut input);
+         tx.send(input);
+      }
    })
 }
-
