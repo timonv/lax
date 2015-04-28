@@ -45,14 +45,6 @@ fn extract_channels(json: &str) -> Vec<Channel> {
 }
 
 impl CurrentState {
-    pub fn id_to_user(&self, id: &str) -> Option<&User> {
-        self.users.iter().find(|user| user.id == id)
-    }
-    
-    pub fn id_to_channel(&self, id: &str) -> Option<&Channel> {
-        self.channels.iter().find(|channel| channel.id == id)
-    }
-
     pub fn parse_incoming_message(&self, raw: &str) -> json::DecodeResult<Message> {
         let mut message = try!(message::new_from_str(&raw));
         
@@ -70,6 +62,15 @@ impl CurrentState {
 
         Ok(message)
     }
+
+    fn id_to_user(&self, id: &str) -> Option<&User> {
+        self.users.iter().find(|user| user.id == id)
+    }
+    
+    fn id_to_channel(&self, id: &str) -> Option<&Channel> {
+        self.channels.iter().find(|channel| channel.id == id)
+    }
+
 }
 
 #[cfg(test)]
