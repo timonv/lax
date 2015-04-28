@@ -39,7 +39,7 @@ fn main() {
 
     for raw_message in slack_stream.iter() {
         match current_state.parse_incoming_message(&raw_message) {
-            Ok(message) => user_view.incoming_message(message).ok().expect("Could not send message to view"),
+            Ok(message) => user_view.print_message(message).ok().expect("Could not send message to view"),
             Err(e) => println!("ERROR PARSING: {}\n{}", e, raw_message)
         }
     }
