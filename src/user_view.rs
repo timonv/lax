@@ -35,6 +35,7 @@ fn spawn_input<'b>(tx: mpsc::Sender<String>) -> thread::JoinGuard<'b, ()> {
 
       loop {
          let mut input: String = "".to_string();
+         print!(">> ");
          stdin.read_line(&mut input);
          tx.send(input).ok().expect("Could not send input");
       }

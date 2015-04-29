@@ -17,6 +17,7 @@ mod user;
 mod message;
 mod channel;
 mod current_state;
+mod dispatcher;
 
 /*
  *  messages_stream <--> main <---> current_state --> user_view
