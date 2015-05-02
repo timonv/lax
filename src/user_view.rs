@@ -5,19 +5,19 @@ use std::sync::mpsc;
 use message::Message;
 use channel::Channel;
 
-pub struct UserView<'a> {
-        _input_guard: thread::JoinGuard<'a, ()>,
+pub struct UserView {
+        _input_guard: thread::JoinHandle<()>,
         current_channel: Option<Channel>
 }
 
-pub fn start<'a>() -> (UserView<'a>, mpsc::Receiver<String>) {
+pub fn start() -> (UserView, mpsc::Receiver<String>) {
     let (input_send, input_recv) = mpsc::channel::<String>();
 
     let view = UserView { _input_guard: spawn_input(input_send), current_channel: None };
     (view, input_recv)
 }
 
-impl<'a> UserView<'a> {
+impl UserView {
     pub fn print_message(&self, message: Message) -> Result<(), &'static str> {
        println!("{}", message);
        Ok(())
@@ -29,8 +29,8 @@ impl<'a> UserView<'a> {
     }
 }
 
-fn spawn_input<'b>(tx: mpsc::Sender<String>) -> thread::JoinGuard<'b, ()> {
-   thread::scoped(move || {
+fn spawn_input(tx: mpsc::Sender<String>) -> thread::JoinHandle<()> {
+   thread::spawn(move || {
       let mut stdin = io::stdin();
 
       loop {

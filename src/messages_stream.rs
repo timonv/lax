@@ -27,12 +27,12 @@ use websocket::stream::WebSocketStream;
 
 // ... not really a stream
 // More like a guard with extras
-pub struct SlackStream<'a> {
+pub struct SlackStream {
     pub initial_state: String,
 
     // TODO Threadpool
-    _receiver_guard: thread::JoinGuard<'a, ()>,
-    _sender_guard: thread::JoinGuard<'a, ()>,
+    _receiver_guard: thread::JoinHandle<()>,
+    _sender_guard: thread::JoinHandle<()>,
 
     _outgoing_sender: Sender<Message>,
     _incoming_receiver: Receiver<String>,
@@ -71,15 +71,15 @@ pub fn establish_stream(authtoken: &str) -> SlackStream  {
 
 fn request_realtime_messaging(authtoken: &str) -> String {
     let mut client = HttpClient::new();
-    let mut res = client.get(format!("https://slack.com/api/rtm.start?token={}", authtoken).as_ref()).send().unwrap();
+    let mut res = client.get(format!("https://slack.com/api/rtm.start?token={}", authtoken).as_str()).send().unwrap();
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
 
     body
 }
 
-fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_receiver: Receiver<Message>) -> thread::JoinGuard<'a, ()> {
-    let send_guard = thread::scoped(move || {
+fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_receiver: Receiver<Message>) -> thread::JoinHandle<()> {
+    let send_guard = thread::spawn(move || {
         loop {
             let message = match outgoing_receiver.recv() {
                 Ok(m) => m,
@@ -112,10 +112,10 @@ fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_rece
     send_guard
 }
 
-fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<String>) -> thread::JoinGuard<'a, ()> {
+fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<String>) -> thread::JoinHandle<()> {
     // Double thread to keep receiver alive
     // Previously crashed because ssl
-    thread::scoped(move || {
+    thread::spawn(move || {
         let arw_wss = Arc::new(RwLock::new(wss_receiver));
         loop {
 
@@ -179,7 +179,7 @@ fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_s
     })
 }
 
-impl<'a> SlackStream<'a> {
+impl SlackStream {
     pub fn send_text_message(&self, message: String) {
         let trimmed = message.trim();
 

@@ -93,7 +93,7 @@ fn request_temp_code() -> (TempCode, Listening) {
 fn request_token(temp_code: &TempCode) -> AuthToken {
     let mut client = Client::new();
     // I thought & is sufficient to make it a slice
-    let mut res = client.get(format_access_uri(temp_code).as_ref()).send().unwrap();
+    let mut res = client.get(format_access_uri(temp_code).as_str()).send().unwrap();
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
     match json::from_str(&body) {
