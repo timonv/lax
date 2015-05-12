@@ -32,9 +32,9 @@ impl Dispatcher {
        self.broadcasters.push(handle);
     }
 
-    pub fn register_subscriber(&mut self, subscriber: &Subscribe) {
-       let sender = subscriber.subscribe();
-       let type_key = type_to_str(&subscriber.what_subscribe());
+    pub fn register_subscriber(&mut self, subscriber: &Subscribe, dispatch_type: DispatchType) {
+       let sender = subscriber.subscribe_handle();
+       let type_key = type_to_str(&dispatch_type);
        let new = match self.subscribers.get_mut(type_key) {
           Some(others) => {
              others.push(sender);
@@ -49,6 +49,7 @@ impl Dispatcher {
     }
 
     pub fn start(&self) {
+       // Assuming that broadcasters.clone() copies the vector, but increase ref count on els
        for broadcaster in self.broadcasters.clone() {
           let subscribers = self.subscribers.clone();
           thread::spawn(move || {
@@ -65,10 +66,6 @@ impl Dispatcher {
           });
        }
     }
-
-    // fn shared_subscribers(&self) -> HashMap<&str, Arc<Mutex<mpsc::Sender<DispatchMessage>>>> {
-    //    self.subscribers.iter().map(|v| Arc::new(Mutex::new(v.clone()))).collect()
-    // }
 
     fn num_broadcasters(&self) -> usize {
        self.broadcasters.len()
@@ -97,15 +94,14 @@ trait Broadcast {
 }
 
 trait Subscribe {
-   fn subscribe(&self) -> mpsc::Sender<DispatchMessage>;
-   fn what_subscribe(&self) -> DispatchType;
+   fn subscribe_handle(&self) -> mpsc::Sender<DispatchMessage>;
 }
 
 #[cfg(test)]
 mod test {
     use std::sync::mpsc;
     use super::{ Dispatcher, Broadcast, Subscribe, DispatchMessage};
-    use super::DispatchType::{self, OutgoingMessage};
+    use super::DispatchType::{self, OutgoingMessage, IncomingMessage};
 
     #[test]
     fn test_register_broadcaster() {
@@ -121,7 +117,7 @@ mod test {
         let mut dispatcher = Dispatcher::new();
         let sub = TestSubscriber::new();
         assert_eq!(dispatcher.num_subscribers(OutgoingMessage), 0);
-        dispatcher.register_subscriber(&sub);
+        dispatcher.register_subscriber(&sub, OutgoingMessage);
         assert_eq!(dispatcher.num_subscribers(OutgoingMessage), 1);
     }
 
@@ -132,8 +128,8 @@ mod test {
         let sub2 = TestSubscriber::new();
 
         assert_eq!(dispatcher.num_subscribers(OutgoingMessage), 0);
-        dispatcher.register_subscriber(&sub);
-        dispatcher.register_subscriber(&sub2);
+        dispatcher.register_subscriber(&sub, OutgoingMessage);
+        dispatcher.register_subscriber(&sub2, OutgoingMessage);
         assert_eq!(dispatcher.num_subscribers(OutgoingMessage), 2);
     }
 
@@ -143,13 +139,34 @@ mod test {
         let sub = TestSubscriber::new();
         let mut brd = TestBroadcaster::new();
         dispatcher.register_broadcaster(&mut brd);
-        dispatcher.register_subscriber(&sub);
+        dispatcher.register_subscriber(&sub, OutgoingMessage);
 
         dispatcher.start();
 
         brd.broadcast(OutgoingMessage, "Hello world!".to_string());
         let message = sub.receiver.recv().unwrap();
         assert_eq!(message.dispatch_type, OutgoingMessage);
+        assert_eq!(message.payload, "Hello world!");
+    }
+
+    #[test]
+    fn test_broadcast_multiple_to_one() {
+        let mut dispatcher = Dispatcher::new();
+        let sub = TestSubscriber::new();
+        let mut brd = TestBroadcaster::new();
+        dispatcher.register_broadcaster(&mut brd);
+        dispatcher.register_subscriber(&sub, OutgoingMessage);
+        dispatcher.register_subscriber(&sub, IncomingMessage);
+
+        dispatcher.start();
+
+        brd.broadcast(OutgoingMessage, "Hello world!".to_string());
+        let message = sub.receiver.recv().unwrap();
+        assert_eq!(message.dispatch_type, OutgoingMessage);
+        assert_eq!(message.payload, "Hello world!");
+        brd.broadcast(IncomingMessage, "Hello world!".to_string());
+        let message = sub.receiver.recv().unwrap();
+        assert_eq!(message.dispatch_type, IncomingMessage);
         assert_eq!(message.payload, "Hello world!");
     }
 
@@ -191,12 +208,8 @@ mod test {
     }
 
     impl Subscribe for TestSubscriber {
-       fn subscribe(&self) -> mpsc::Sender<DispatchMessage> {
+       fn subscribe_handle(&self) -> mpsc::Sender<DispatchMessage> {
           self.sender.clone()
-       }
-
-       fn what_subscribe(&self) -> DispatchType {
-          OutgoingMessage
        }
     }
 }
