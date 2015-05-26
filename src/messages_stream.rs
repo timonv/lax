@@ -22,51 +22,22 @@ use websocket::Receiver as WssReceiverTrait;
 use websocket::client::request::Url;
 use websocket::stream::WebSocketStream;
 
+use dispatcher::{self};
+
 // TODO Use this
 // const SLACK_RTM_START: &'static str = "https://slack.com/api/rtm.start?token={}";
 
 // ... not really a stream
 // More like a guard with extras
 pub struct SlackStream {
-    pub initial_state: String,
+    pub initial_state: Option<String>,
 
     // TODO Threadpool
-    _receiver_guard: thread::JoinHandle<()>,
-    _sender_guard: thread::JoinHandle<()>,
+    _receiver_guard: Option<thread::JoinHandle<()>>,
+    _sender_guard: Option<thread::JoinHandle<()>>,
 
-    _outgoing_sender: Sender<Message>,
-    _incoming_receiver: Receiver<String>,
-}
-
-pub fn establish_stream(authtoken: &str) -> SlackStream  {
-    let initial_state = request_realtime_messaging(authtoken);
-    let json = json::from_str(&initial_state).unwrap();
-
-    // As per example
-    let wss_url = Url::parse(json.find("url").unwrap().as_string().unwrap()).unwrap();
-    let request = Client::connect(wss_url).unwrap();
-    let response = request.send().unwrap(); // send request and retrieve response
-    response.validate().unwrap(); // validate the response (check wss frames, idk?)
-
-    let (sender, receiver) = response.begin().split();
-
-    // Outgoing messages are send via the sender, to the receiver, to websockets
-    let (outgoing_sender, outgoing_receiver) = channel::<Message>();
-
-    // Incoming messages are send via websockets to the sender, to the receiver, to the consumer
-    // (i.e. UI)
-    let (incoming_sender, incoming_receiver) = channel::<String>();
-
-    let send_guard = spawn_send_loop(sender, outgoing_receiver);
-    let receiver_guard = spawn_receive_loop(receiver, outgoing_sender.clone(), incoming_sender);
-
-    SlackStream {
-        initial_state: initial_state,
-        _receiver_guard: receiver_guard,
-        _sender_guard: send_guard,
-        _outgoing_sender: outgoing_sender,
-        _incoming_receiver: incoming_receiver
-    }
+    _outgoing_sender: Option<Sender<Message>>,
+    _incoming_sender: Option<Sender<dispatcher::DispatchMessage>>,
 }
 
 fn request_realtime_messaging(authtoken: &str) -> String {
@@ -112,7 +83,7 @@ fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_rece
     send_guard
 }
 
-fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<String>) -> thread::JoinHandle<()> {
+fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<dispatcher::DispatchMessage>) -> thread::JoinHandle<()> {
     // Double thread to keep receiver alive
     // Previously crashed because ssl
     thread::spawn(move || {
@@ -164,7 +135,7 @@ fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_s
                             }
 
                         },
-                        Message::Text(text_message) => incoming_sender.send(text_message).unwrap(),
+                        Message::Text(text_message) => incoming_sender.send(as_dispatch_message(text_message)).unwrap(),
 
                         _ => panic!("Unknown message received from server!")
                     }
@@ -180,7 +151,46 @@ fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_s
 }
 
 impl SlackStream {
-    pub fn send_text_message(&self, message: String) {
+    pub fn new() -> SlackStream {
+        SlackStream {
+            initial_state: None,
+            _receiver_guard: None,
+            _sender_guard: None,
+            _outgoing_sender: None,
+            _incoming_sender: None
+        }
+    }
+
+    pub fn establish_stream(&mut self, authtoken: &str) {
+        let initial_state = request_realtime_messaging(authtoken);
+        let json = json::from_str(&initial_state).unwrap();
+
+        // As per example
+        let wss_url = Url::parse(json.find("url").unwrap().as_string().unwrap()).unwrap();
+        let request = Client::connect(wss_url).unwrap();
+        let response = request.send().unwrap(); // send request and retrieve response
+        response.validate().unwrap(); // validate the response (check wss frames, idk?)
+
+        let (sender, receiver) = response.begin().split();
+
+        // Outgoing messages are send via the sender, to the receiver, to websockets
+        let (outgoing_sender, outgoing_receiver) = channel::<Message>();
+
+        // Incoming messages are send via websockets to the sender, to the receiver, to the consumer
+        // (i.e. UI)
+        // let (incoming_sender, incoming_receiver) = channel::<dispatcher::DispatchMessage>();
+
+        let incoming_sender = self._incoming_sender.clone().unwrap();
+        let send_guard = spawn_send_loop(sender, outgoing_receiver);
+        let receiver_guard = spawn_receive_loop(receiver, outgoing_sender.clone(), incoming_sender);
+
+        self.initial_state = Some(initial_state);
+        self._receiver_guard = Some(receiver_guard);
+        self._sender_guard = Some(send_guard);
+        self._outgoing_sender = Some(outgoing_sender);
+    }
+
+    pub fn send_raw_to_slack(&self, message: String) {
         let trimmed = message.trim();
 
         // let message = match trimmed {
@@ -194,17 +204,26 @@ impl SlackStream {
         // };
 
         let message = Message::Text(trimmed.to_string());
-        match self._outgoing_sender.send(message) {
-            Ok(()) => (),
-            Err(e) => {
-                println!("Main Loop: {:?}", e);
-            }
+        match self._outgoing_sender {
+            Some(ref sender) => match sender.send(message) {
+                Ok(()) => (),
+                Err(e) => {
+                    println!("Main Loop: {:?}", e);
+                }
+            },
+            None => panic!("No stream to send messages to")
         }
-    }
-
-    // Just returns the underlying receiving iter
-    pub fn iter(&self) -> Iter<String> {
-        self._incoming_receiver.iter()
     }
 }
 
+impl dispatcher::Broadcast for SlackStream {
+    fn broadcast_handle(&mut self) -> dispatcher::BroadcastHandle {
+        let (incoming_sender, incoming_receiver) = channel::<dispatcher::DispatchMessage>();
+        self._incoming_sender = Some(incoming_sender);
+        incoming_receiver
+    }
+}
+
+fn as_dispatch_message(payload: String) -> dispatcher::DispatchMessage {
+    dispatcher::DispatchMessage { dispatch_type: dispatcher::DispatchType::OutgoingMessage, payload: payload }
+}

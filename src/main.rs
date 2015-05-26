@@ -19,6 +19,8 @@ mod channel;
 mod current_state;
 mod dispatcher;
 
+use messages_stream::SlackStream;
+
 /*
  *  messages_stream <--> main <---> current_state --> user_view
  *                        ^                               |
@@ -28,8 +30,8 @@ mod dispatcher;
 fn main() {
     let (token,_guard) = authentication::get_oauth_token_or_panic();
 
-    let slack_stream = messages_stream::establish_stream(&token);
-    let current_state = current_state::new_from_str(&slack_stream.initial_state);
+    let slack_stream = SlackStream::new();
+    let current_state = current_state::new_from_str(&slack_stream.initial_state.unwrap());
     let (user_view, input_endpoint) = user_view::start();
 
     thread::spawn(move || {
@@ -38,10 +40,10 @@ fn main() {
         }
     });
 
-    for raw_message in slack_stream.iter() {
-        match current_state.parse_incoming_message(&raw_message) {
-            Ok(message) => user_view.print_message(message).ok().expect("Could not send message to view"),
-            Err(e) => println!("ERROR PARSING: {}\n{}", e, raw_message)
-        }
-    }
+    // for raw_message in slack_stream.iter() {
+    //     match current_state.parse_incoming_message(&raw_message) {
+    //         Ok(message) => user_view.print_message(message).ok().expect("Could not send message to view"),
+    //         Err(e) => println!("ERROR PARSING: {}\n{}", e, raw_message)
+    //     }
+    // }
 }

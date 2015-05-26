@@ -3,23 +3,37 @@ use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
+// Aliases for easier refactoring
+
+pub type SubscribeHandle = mpsc::Sender<DispatchMessage>;
+pub type BroadcastHandle = mpsc::Receiver<DispatchMessage>;
+
 #[derive(PartialEq, Debug, Clone)]
-enum DispatchType {
+pub enum DispatchType {
     ChangeCurrentChannel,
     OutgoingMessage,
     IncomingMessage
 }
 
 #[derive(Clone)]
-struct DispatchMessage {
-   dispatch_type: DispatchType,
-   payload: String
+pub struct DispatchMessage {
+   pub dispatch_type: DispatchType,
+   pub payload: String
 }
 
-struct Dispatcher {
+pub struct Dispatcher {
     // I heard you like types
-    subscribers: HashMap<&'static str, Vec<mpsc::Sender<DispatchMessage>>>,
-    broadcasters: Vec<Arc<Mutex<mpsc::Receiver<DispatchMessage>>>>
+    subscribers: HashMap<&'static str, Vec<SubscribeHandle>>,
+    broadcasters: Vec<Arc<Mutex<BroadcastHandle>>>
+}
+
+pub trait Broadcast {
+   // fn broadcast(&self, dispatch_type: DispatchType, payload: String);
+   fn broadcast_handle(&mut self) -> BroadcastHandle;
+}
+
+pub trait Subscribe {
+   fn subscribe_handle(&self) -> SubscribeHandle;
 }
 
 impl Dispatcher {
@@ -88,19 +102,10 @@ fn type_to_str(dispatch_type: &DispatchType) -> &'static str {
    }
 }
 
-trait Broadcast {
-   fn broadcast(&self, dispatch_type: DispatchType, payload: String);
-   fn broadcast_handle(&mut self) -> mpsc::Receiver<DispatchMessage>;
-}
-
-trait Subscribe {
-   fn subscribe_handle(&self) -> mpsc::Sender<DispatchMessage>;
-}
-
 #[cfg(test)]
 mod test {
     use std::sync::mpsc;
-    use super::{ Dispatcher, Broadcast, Subscribe, DispatchMessage};
+    use super::{ Dispatcher, Broadcast, Subscribe, DispatchMessage, SubscribeHandle, BroadcastHandle};
     use super::DispatchType::{self, OutgoingMessage, IncomingMessage};
 
     #[test]
@@ -171,19 +176,12 @@ mod test {
     }
 
     struct TestBroadcaster {
-       sender: Option<mpsc::Sender<DispatchMessage>>
+       sender: Option<SubscribeHandle>
     }
 
     impl TestBroadcaster {
        fn new() -> TestBroadcaster {
          TestBroadcaster { sender: None }
-      }
-    }
-    impl Broadcast for TestBroadcaster {
-      fn broadcast_handle(&mut self) -> mpsc::Receiver<DispatchMessage> {
-         let (tx, rx) = mpsc::channel::<DispatchMessage>();
-         self.sender = Some(tx);
-         rx
       }
 
       fn broadcast(&self, dispatch_type: DispatchType, payload: String) {
@@ -195,9 +193,18 @@ mod test {
       }
     }
 
+    impl Broadcast for TestBroadcaster {
+      fn broadcast_handle(&mut self) -> BroadcastHandle {
+         let (tx, rx) = mpsc::channel::<DispatchMessage>();
+         self.sender = Some(tx);
+         rx
+      }
+
+    }
+
     struct TestSubscriber {
-      receiver: mpsc::Receiver<DispatchMessage>,
-      sender: mpsc::Sender<DispatchMessage>
+      receiver: BroadcastHandle,
+      sender: SubscribeHandle
     }
 
     impl TestSubscriber {
@@ -208,7 +215,7 @@ mod test {
     }
 
     impl Subscribe for TestSubscriber {
-       fn subscribe_handle(&self) -> mpsc::Sender<DispatchMessage> {
+       fn subscribe_handle(&self) -> SubscribeHandle {
           self.sender.clone()
        }
     }
