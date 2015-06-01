@@ -163,6 +163,7 @@ impl SlackStream {
 
     pub fn establish_stream(&mut self, authtoken: &str) {
         let initial_state = request_realtime_messaging(authtoken);
+        // println!("{}", initial_state);
         let json = json::from_str(&initial_state).unwrap();
 
         // As per example
@@ -170,6 +171,7 @@ impl SlackStream {
         let request = Client::connect(wss_url).unwrap();
         let response = request.send().unwrap(); // send request and retrieve response
         response.validate().unwrap(); // validate the response (check wss frames, idk?)
+        println!("Started wss connection");
 
         let (sender, receiver) = response.begin().split();
 
@@ -180,9 +182,10 @@ impl SlackStream {
         // (i.e. UI)
         // let (incoming_sender, incoming_receiver) = channel::<dispatcher::DispatchMessage>();
 
-        let incoming_sender = self._incoming_sender.clone().unwrap();
+        let incoming_sender = self._incoming_sender.clone().expect("Expected incoming sender");
         let send_guard = spawn_send_loop(sender, outgoing_receiver);
         let receiver_guard = spawn_receive_loop(receiver, outgoing_sender.clone(), incoming_sender);
+        println!("Spawned send and receive wss threads");
 
         self.initial_state = Some(initial_state);
         self._receiver_guard = Some(receiver_guard);
@@ -225,5 +228,5 @@ impl dispatcher::Broadcast for SlackStream {
 }
 
 fn as_dispatch_message(payload: String) -> dispatcher::DispatchMessage {
-    dispatcher::DispatchMessage { dispatch_type: dispatcher::DispatchType::OutgoingMessage, payload: payload }
+    dispatcher::DispatchMessage { dispatch_type: dispatcher::DispatchType::RawIncomingMessage, payload: payload }
 }

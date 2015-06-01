@@ -14,9 +14,10 @@ pub fn new_from_str(json: &str) -> CurrentState {
     CurrentState {
         me: extract_me(&json),
         channels: extract_channels(&json),
-        users: extract_users(&json)
+        users: extract_users(&json),
     }
 }
+
 
 fn extract_me(json: &str) -> User {
     // Hideous, maybe better to just manually implement decodable?
@@ -47,7 +48,6 @@ fn extract_channels(json: &str) -> Vec<Channel> {
 impl CurrentState {
     pub fn parse_incoming_message(&self, raw: &str) -> json::DecodeResult<Message> {
         let mut message = try!(message::new_from_str(&raw));
-        
         match message.channel_id {
             // I'm not sure I fully understand why the ref is needed.
             // The value is borrowed, but isn't it returned after going out of scope?
@@ -70,7 +70,6 @@ impl CurrentState {
     fn id_to_channel(&self, id: &str) -> Option<&Channel> {
         self.channels.iter().find(|channel| channel.id == id)
     }
-
 }
 
 #[cfg(test)]

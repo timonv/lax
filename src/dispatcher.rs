@@ -1,4 +1,4 @@
-use self::DispatchType::{ChangeCurrentChannel, OutgoingMessage, IncomingMessage};
+use self::DispatchType::{ChangeCurrentChannel, OutgoingMessage, RawIncomingMessage};
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -12,7 +12,7 @@ pub type BroadcastHandle = mpsc::Receiver<DispatchMessage>;
 pub enum DispatchType {
     ChangeCurrentChannel,
     OutgoingMessage,
-    IncomingMessage
+    RawIncomingMessage
 }
 
 #[derive(Clone)]
@@ -98,7 +98,7 @@ fn type_to_str(dispatch_type: &DispatchType) -> &'static str {
    match *dispatch_type {
        OutgoingMessage => "OutgoingMessage",
        ChangeCurrentChannel => "ChangeCurrentChannel",
-       IncomingMessage => "IncomingMessage"
+       RawIncomingMessage => "RawIncomingMessage"
    }
 }
 
@@ -106,7 +106,7 @@ fn type_to_str(dispatch_type: &DispatchType) -> &'static str {
 mod test {
     use std::sync::mpsc;
     use super::{ Dispatcher, Broadcast, Subscribe, DispatchMessage, SubscribeHandle, BroadcastHandle};
-    use super::DispatchType::{self, OutgoingMessage, IncomingMessage};
+    use super::DispatchType::{self, OutgoingMessage, RawIncomingMessage};
 
     #[test]
     fn test_register_broadcaster() {
@@ -161,7 +161,7 @@ mod test {
         let mut brd = TestBroadcaster::new();
         dispatcher.register_broadcaster(&mut brd);
         dispatcher.register_subscriber(&sub, OutgoingMessage);
-        dispatcher.register_subscriber(&sub, IncomingMessage);
+        dispatcher.register_subscriber(&sub, RawIncomingMessage);
 
         dispatcher.start();
 
@@ -169,9 +169,9 @@ mod test {
         let message = sub.receiver.recv().unwrap();
         assert_eq!(message.dispatch_type, OutgoingMessage);
         assert_eq!(message.payload, "Hello world!");
-        brd.broadcast(IncomingMessage, "Hello world!".to_string());
+        brd.broadcast(RawIncomingMessage, "Hello world!".to_string());
         let message = sub.receiver.recv().unwrap();
-        assert_eq!(message.dispatch_type, IncomingMessage);
+        assert_eq!(message.dispatch_type, RawIncomingMessage);
         assert_eq!(message.payload, "Hello world!");
     }
 
