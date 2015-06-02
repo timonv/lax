@@ -7,8 +7,7 @@ use channel::Channel;
 use current_state::{self, CurrentState};
 use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage};
 
-// Not really a view, rename to something sensible
-pub struct UserView {
+pub struct DisplayController {
    _input_guard: Option<thread::JoinHandle<()>>,
    _output_guard: Option<thread::JoinHandle<()>>,
    current_state: Arc<Mutex<CurrentState>>,
@@ -16,12 +15,12 @@ pub struct UserView {
    subscribe_rx: Arc<Mutex<mpsc::Receiver<DispatchMessage>>>
 }
 
-impl UserView {
-   pub fn new(initial_state: &str) -> UserView {
+impl DisplayController {
+   pub fn new(initial_state: &str) -> DisplayController {
       let initial_state = current_state::new_from_str(&initial_state);
       let (tx, rx) = mpsc::channel::<DispatchMessage>();
 
-      UserView {
+      DisplayController {
          _input_guard: None,
          _output_guard: None,
          current_state: Arc::new(Mutex::new(initial_state)),
@@ -72,7 +71,7 @@ impl UserView {
    }
 }
 
-impl Subscribe for UserView {
+impl Subscribe for DisplayController {
    fn subscribe_handle(&self) -> SubscribeHandle {
       self.subscribe_tx.clone()
    }

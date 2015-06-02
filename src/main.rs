@@ -12,7 +12,7 @@ extern crate rustc_serialize;
 
 mod authentication;
 mod slack_stream;
-mod user_view;
+mod display_controller;
 mod user;
 mod message;
 mod channel;
@@ -21,7 +21,7 @@ mod dispatcher;
 
 use slack_stream::SlackStream;
 use dispatcher::{Dispatcher, DispatchType};
-use user_view::UserView;
+use display_controller::DisplayController;
 
 #[allow(dead_code)]
 fn main() {
@@ -35,7 +35,7 @@ fn main() {
     slack_stream.establish_stream(&token);
     let initial = slack_stream.initial_state.clone().expect("Expected initial state");
 
-    let mut view = UserView::new(&initial);
+    let mut view = DisplayController::new(&initial);
     dispatcher.register_subscriber(&mut view, DispatchType::RawIncomingMessage);
 
     view.start();
