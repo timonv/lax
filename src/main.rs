@@ -9,6 +9,7 @@ extern crate regex;
 extern crate serialize;
 extern crate websocket;
 extern crate rustc_serialize;
+extern crate ncurses;
 
 mod authentication;
 mod slack_stream;
@@ -18,6 +19,8 @@ mod message;
 mod channel;
 mod current_state;
 mod dispatcher;
+mod view;
+use view::View;
 
 use slack_stream::SlackStream;
 use dispatcher::{Dispatcher, DispatchType};

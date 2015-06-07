@@ -6,6 +6,7 @@ use message::Message;
 use channel::Channel;
 use current_state::{self, CurrentState};
 use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage};
+use view::View;
 
 pub struct DisplayController {
    _input_guard: Option<thread::JoinHandle<()>>,
@@ -37,12 +38,14 @@ impl DisplayController {
       let rx = self.subscribe_rx.clone();
 
       let oguard = thread::spawn(move || {
+         let mut view = View::new();
+         view.init();
          loop {
             let message = rx.lock().unwrap().recv().unwrap();
             match message.dispatch_type {
                DispatchType::RawIncomingMessage => {
                   let parsed = state.lock().unwrap().parse_incoming_message(&message.payload);
-                  println!("{}", parsed.unwrap());
+                  view.print_message(&format!("{}", parsed.unwrap()));
                },
                _ => ()
             }
