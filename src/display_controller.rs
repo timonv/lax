@@ -5,7 +5,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use message::Message;
 use channel::Channel;
 use current_state::{self, CurrentState};
-use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage};
+use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
 use view::View;
 
 pub struct DisplayController {
@@ -13,7 +13,8 @@ pub struct DisplayController {
    _output_guard: Option<thread::JoinHandle<()>>,
    current_state: Arc<Mutex<CurrentState>>,
    subscribe_tx: mpsc::Sender<DispatchMessage>,
-   subscribe_rx: Arc<Mutex<mpsc::Receiver<DispatchMessage>>>
+   subscribe_rx: Arc<Mutex<mpsc::Receiver<DispatchMessage>>>,
+   broadcast_tx: Option<mpsc::Sender<DispatchMessage>>
 }
 
 impl DisplayController {
@@ -26,7 +27,8 @@ impl DisplayController {
          _output_guard: None,
          current_state: Arc::new(Mutex::new(initial_state)),
          subscribe_rx: Arc::new(Mutex::new(rx)),
-         subscribe_tx: tx
+         subscribe_tx: tx,
+         broadcast_tx: None
       }
    }
 
@@ -35,18 +37,36 @@ impl DisplayController {
       // Messages that generally result in something
       // being printed
       let state = self.current_state.clone();
+
+      // For blocking on messages
       let rx = self.subscribe_rx.clone();
 
-      let oguard = thread::spawn(move || {
+      // For broadcasting stuff
+      let broadcast_tx = self.broadcast_tx.clone().expect("Expected broadcaster to be present in display controller");
+
+      // For sending stuff to be printed to the screen
+      let (print_tx, print_rx) = mpsc::channel::<String>();
+
+      let vguard = thread::spawn(move || {
          let mut view = View::new();
-         view.init();
+         let onInput = Box::new(move |string: String| {
+            let message = DispatchMessage { dispatch_type: DispatchType::UserInput, payload: string};
+            broadcast_tx.send(message).unwrap();
+         });
+         view.init(onInput, print_rx);
+      });
+
+      let mguard = thread::spawn(move || {
          loop {
             let message = rx.lock().unwrap().recv().unwrap();
             match message.dispatch_type {
                DispatchType::RawIncomingMessage => {
                   let parsed = state.lock().unwrap().parse_incoming_message(&message.payload);
-                  view.print_message(&format!("{}", parsed.unwrap()));
+                  print_tx.send(format!("{}", parsed.unwrap())).ok().expect("could not send to view");
                },
+               DispatchType::UserInput => {
+                  print_tx.send(format!("User input: {}", &message.payload)).ok().expect("could not send to view");
+               }
                _ => ()
             }
          }
@@ -64,7 +84,7 @@ impl DisplayController {
       //    }
       // });
 
-      self._output_guard = Some(oguard);
+      // self._output_guard = Some(oguard);
       // self._input_guard = Some(iguard);
    }
 
@@ -78,6 +98,14 @@ impl Subscribe for DisplayController {
    fn subscribe_handle(&self) -> SubscribeHandle {
       self.subscribe_tx.clone()
    }
+}
+
+impl Broadcast for DisplayController {
+    fn broadcast_handle(&mut self) -> BroadcastHandle {
+        let (tx, rx) = mpsc::channel::<DispatchMessage>();
+        self.broadcast_tx = Some(tx);
+        rx
+    }
 }
 
 // #[cfg(test)]

@@ -38,10 +38,14 @@ fn main() {
     slack_stream.establish_stream(&token);
     let initial = slack_stream.initial_state.clone().expect("Expected initial state");
 
-    let mut view = DisplayController::new(&initial);
-    dispatcher.register_subscriber(&mut view, DispatchType::RawIncomingMessage);
+    let mut display = DisplayController::new(&initial);
+    dispatcher.register_subscriber(&mut display, DispatchType::RawIncomingMessage);
 
-    view.start();
+    // For now
+    dispatcher.register_subscriber(&mut display, DispatchType::UserInput);
+    dispatcher.register_broadcaster(&mut display);
+
+    display.start();
     dispatcher.start();
 
     loop {}

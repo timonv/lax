@@ -1,4 +1,4 @@
-use self::DispatchType::{ChangeCurrentChannel, OutgoingMessage, RawIncomingMessage};
+use self::DispatchType::{ChangeCurrentChannel, OutgoingMessage, RawIncomingMessage, UserInput};
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -12,7 +12,8 @@ pub type BroadcastHandle = mpsc::Receiver<DispatchMessage>;
 pub enum DispatchType {
     ChangeCurrentChannel,
     OutgoingMessage,
-    RawIncomingMessage
+    RawIncomingMessage,
+    UserInput
 }
 
 #[derive(Clone)]
@@ -98,7 +99,8 @@ fn type_to_str(dispatch_type: &DispatchType) -> &'static str {
    match *dispatch_type {
        OutgoingMessage => "OutgoingMessage",
        ChangeCurrentChannel => "ChangeCurrentChannel",
-       RawIncomingMessage => "RawIncomingMessage"
+       RawIncomingMessage => "RawIncomingMessage",
+       UserInput => "UserInput"
    }
 }
 
