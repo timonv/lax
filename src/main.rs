@@ -20,8 +20,8 @@ mod channel;
 mod current_state;
 mod dispatcher;
 mod view;
-use view::View;
 
+use view::View;
 use slack_stream::SlackStream;
 use dispatcher::{Dispatcher, DispatchType};
 use display_controller::DisplayController;

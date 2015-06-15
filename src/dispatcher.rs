@@ -24,7 +24,7 @@ pub struct DispatchMessage {
 
 pub struct Dispatcher {
     // I heard you like types
-    subscribers: HashMap<&'static str, Vec<SubscribeHandle>>,
+    subscribers: HashMap<String, Vec<SubscribeHandle>>,
     broadcasters: Vec<Arc<Mutex<BroadcastHandle>>>
 }
 
@@ -49,8 +49,8 @@ impl Dispatcher {
 
     pub fn register_subscriber(&mut self, subscriber: &Subscribe, dispatch_type: DispatchType) {
        let sender = subscriber.subscribe_handle();
-       let type_key = type_to_str(&dispatch_type);
-       let new = match self.subscribers.get_mut(type_key) {
+       let type_key = type_to_string(&dispatch_type);
+       let new = match self.subscribers.get_mut(&type_key) {
           Some(others) => {
              others.push(sender);
              None
@@ -70,7 +70,7 @@ impl Dispatcher {
           thread::spawn(move || {
              loop {
                 let message = broadcaster.lock().unwrap().recv().ok().expect("Couldn't receive message in broadcaster or channel hung up");
-                match subscribers.get(type_to_str(&message.dispatch_type)) {
+                match subscribers.get(&type_to_string(&message.dispatch_type)) {
                   Some(ref subs) => { 
                       for sub in subs.iter() { sub.send(message.clone()).unwrap(); }
                   },
@@ -87,7 +87,7 @@ impl Dispatcher {
     }
 
     fn num_subscribers(&self, dispatch_type: DispatchType) -> usize {
-       match self.subscribers.get(type_to_str(&dispatch_type)) {
+       match self.subscribers.get(&type_to_string(&dispatch_type)) {
           Some(subscribers) => subscribers.len(),
           None => 0
        }
@@ -95,13 +95,14 @@ impl Dispatcher {
 }
 
 // Convert to hashable for dispatchtype?
-fn type_to_str(dispatch_type: &DispatchType) -> &'static str {
-   match *dispatch_type {
-       OutgoingMessage => "OutgoingMessage",
-       ChangeCurrentChannel => "ChangeCurrentChannel",
-       RawIncomingMessage => "RawIncomingMessage",
-       UserInput => "UserInput"
-   }
+fn type_to_string(dispatch_type: &DispatchType) -> String {
+   format!("{:?}", dispatch_type)
+   // match *dispatch_type {
+   //     OutgoingMessage => "OutgoingMessage",
+   //     ChangeCurrentChannel => "ChangeCurrentChannel",
+   //     RawIncomingMessage => "RawIncomingMessage",
+   //     UserInput => "UserInput"
+   // }
 }
 
 #[cfg(test)]
