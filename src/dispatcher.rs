@@ -13,7 +13,7 @@ pub enum DispatchType {
     ChangeCurrentChannel,
     OutgoingMessage,
     RawIncomingMessage,
-    UserInput
+    UserInput,
 }
 
 #[derive(Clone)]

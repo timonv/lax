@@ -2,6 +2,7 @@ use std::io;
 use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
 
+use input_parser;
 use message::Message;
 use channel::Channel;
 use current_state::{self, CurrentState};
@@ -46,7 +47,8 @@ impl DisplayController {
       thread::spawn(move || {
          let mut view = View::new();
          let onInput = Box::new(move |string: String| {
-            let message = DispatchMessage { dispatch_type: DispatchType::UserInput, payload: string};
+            let (payload, dtype) = input_parser::parse(string);
+            let message = DispatchMessage { payload: payload, dispatch_type: dtype };
             broadcast_tx.send(message).unwrap();
          });
          view.init(onInput, print_rx);

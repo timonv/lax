@@ -1,4 +1,5 @@
 #![feature(rustc_private)] // TODO Migrate to crates.io variant (json)
+#![feature(slice_patterns)] // drool
 #![feature(core)]
 #![feature(convert)]
 
@@ -20,6 +21,7 @@ mod channel;
 mod current_state;
 mod dispatcher;
 mod view;
+mod input_parser;
 
 use view::View;
 use slack_stream::SlackStream;
