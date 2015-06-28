@@ -1,4 +1,3 @@
-use std::io;
 use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
 
@@ -6,7 +5,7 @@ use input_parser;
 use message::Message;
 use channel::Channel;
 use current_state::{self, CurrentState};
-use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
+use dispatcher::{DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
 use view::View;
 use view_data::ViewData;
 
@@ -82,14 +81,9 @@ impl DisplayController {
                }
                _ => ()
             }
-            view_tx.send(view_data.clone());
+            view_tx.send(view_data.clone()).unwrap();
          }
       });
-   }
-
-   fn print_message(&self, message: Message) -> Result<(), &'static str> {
-      println!("{}", message);
-      Ok(())
    }
 
    fn default_channel(&self) -> Channel {

@@ -7,7 +7,7 @@
 use std::io::prelude::*;
 use serialize::json;
 use std::thread;
-use std::sync::mpsc::{channel, Sender, Receiver, Iter};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, RwLock};
 
 // extern

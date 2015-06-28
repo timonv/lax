@@ -1,13 +1,9 @@
-use std::thread;
-use std::sync::{mpsc,Arc, Mutex};
-use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
+use std::sync::mpsc;
 use ncurses::*;
 use view_data::ViewData;
 use message::Message;
 
 pub struct View {
-    max_x: i32,
-    max_y: i32,
     messages: WINDOW,
     input: WINDOW,
     view_data: Option<ViewData>
@@ -25,8 +21,6 @@ impl View {
         let input = init_input(max_y, max_x);
 
         View {
-            max_x: max_x,
-            max_y: max_y,
             messages: messages,
             input: input,
             view_data: None
@@ -119,13 +113,6 @@ impl View {
 impl Drop for View {
     fn drop(&mut self) {
         endwin();
-    }
-}
-
-fn input_to_message(string: String) -> DispatchMessage {
-    DispatchMessage {
-        dispatch_type: DispatchType::UserInput,
-        payload: string
     }
 }
 

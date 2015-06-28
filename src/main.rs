@@ -1,9 +1,6 @@
 #![feature(rustc_private)] // TODO Migrate to crates.io variant (json)
 #![feature(slice_patterns)] // drool
-#![feature(core)]
 #![feature(convert)]
-
-use std::thread;
 
 extern crate hyper;
 extern crate regex;
@@ -24,7 +21,6 @@ mod view;
 mod view_data;
 mod input_parser;
 
-use view::View;
 use slack_stream::SlackStream;
 use dispatcher::{Dispatcher, DispatchType};
 use display_controller::DisplayController;
