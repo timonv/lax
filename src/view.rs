@@ -54,7 +54,7 @@ impl View {
             if ch != '\n' as i32 && ch != '\r' as i32 {
                 // TODO This might send wrong keys
                 unsafe { input.as_mut_vec().push(ch as u8); }
-                mvwprintw(self.input, 1, 3, &input);
+                mvwprintw(self.input, 1, (self.current_prompt().len() + 1) as i32, &input);
                 wrefresh(self.input);
             } else {
                 on_input(input);
@@ -83,17 +83,26 @@ impl View {
         let bottom = ' ' as chtype;
         let empty = ' ' as chtype;
         wborder(self.input, empty,empty,top,bottom,empty,empty,empty,empty);
-        mvwprintw(self.input, 1, 1, "> ");
-        wmove(self.input, 1, 3); // Move physical cursor to prompt start
+        let promptname: &str = &self.current_prompt();
+        mvwprintw(self.input, 1, 1, promptname);
+        wmove(self.input, 1, (promptname.len() + 1) as i32); // Move physical cursor to prompt start
         wrefresh(self.input);
     }
 
-    // Redraw whole messages screen for every message
+    fn current_prompt(&self) -> String {
+        if self.view_data.is_none() { return "> ".to_string() }
+
+        let name = &self.view_data.as_ref().unwrap().channel.name;
+        format!("#{} > ", name)
+    }
+
+    // Naively redraws the whole UI by clearing all data
     fn naive_redraw(&self) {
         if self.view_data.is_none() { return };
 
         wclear(self.messages);
 
+        // TODO extra debug iteration makes no sense
         let view_data = self.view_data.as_ref().unwrap();
         for message in view_data.messages.iter() {
             self.print_message(message)
