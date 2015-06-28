@@ -157,7 +157,8 @@ mod test {
                     \"id\": \"zyx\",
                     \"name\": \"General\",
                     \"members\": [],
-                    \"is_member\": false
+                    \"is_member\": false,
+                    \"is_general\": false
                 } 
             ],
             \"groups\": [ ],

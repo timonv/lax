@@ -33,7 +33,9 @@ mod test {
             \"id\": \"banana\",
             \"name\": \"banter\",
             \"members\": [\"Timon\"],
-            \"is_member\": false
+            \"is_member\": false,
+            \"is_general\": false
+
         }";
         let channel = new_from_str(json).unwrap();
         assert_eq!(channel.id, "banana");
