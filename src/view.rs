@@ -3,12 +3,14 @@ use std::sync::{mpsc,Arc, Mutex};
 use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
 use ncurses::*;
 use view_data::ViewData;
+use message::Message;
 
 pub struct View {
     max_x: i32,
     max_y: i32,
     messages: WINDOW,
-    input: WINDOW
+    input: WINDOW,
+    view_data: Option<ViewData>
 }
 
 impl View {
@@ -26,17 +28,27 @@ impl View {
             max_x: max_x,
             max_y: max_y,
             messages: messages,
-            input: input
+            input: input,
+            view_data: None
         }
     }
 
     // Rather have ncurses call a callback
     // instead of a receiver to cut the dependency
     // but couldn't get it to work
-    pub fn init(&self, on_input: Box<Fn(String)>, view_data: mpsc::Receiver<ViewData>) {
+    pub fn init(&mut self, on_input: Box<Fn(String)>, view_data_rx: mpsc::Receiver<ViewData>) {
         self.draw_prompt();
         let mut input = String::new();
         loop {
+            match view_data_rx.try_recv() {
+                Ok(view_data) => {
+                    self.view_data = Some(view_data);
+                    self.naive_redraw();
+                    self.draw_prompt();
+                }
+                _ => ()
+            }
+
             let ch = wgetch(self.input);
             if ch == ERR { continue };
             if ch != '\n' as i32 && ch != '\r' as i32 {
@@ -54,14 +66,13 @@ impl View {
         // mvwin(self.messages,1,1); // Padding for messages
     }
 
-    pub fn print_message(&self, mut string: String) {
-        string = string + "\n";
+    pub fn print_message(&self, message: &Message) {
+        let string = format!("{}", message) + "\n";
         wprintw(self.messages, &string);
-        wrefresh(self.messages);
     }
 
-    pub fn print_debug(&self, mut string: String) {
-        string = "DEBUG: ".to_string() + &string + "\n";
+    pub fn print_debug(&self, string: &str) {
+        let string = "DEBUG: ".to_string() + &string + "\n";
         wprintw(self.messages, &string);
         wrefresh(self.messages);
     }
@@ -75,6 +86,23 @@ impl View {
         mvwprintw(self.input, 1, 1, "> ");
         wmove(self.input, 1, 3); // Move physical cursor to prompt start
         wrefresh(self.input);
+    }
+
+    // Redraw whole messages screen for every message
+    fn naive_redraw(&self) {
+        if self.view_data.is_none() { return };
+
+        wclear(self.messages);
+
+        let view_data = self.view_data.as_ref().unwrap();
+        for message in view_data.messages.iter() {
+            self.print_message(message)
+        }
+        for debug in view_data.debug.iter() {
+            self.print_debug(debug)
+        }
+
+        wrefresh(self.messages);
     }
 
 }
