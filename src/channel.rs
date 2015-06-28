@@ -1,17 +1,27 @@
 use serialize::json::{self, DecodeResult};
 
 // Deprecated but RustcDecodable fails, wat
-#[derive(Decodable, Clone, Debug)]
+#[derive(Decodable, Clone, Debug, PartialEq, Eq)]
 pub struct Channel {
     pub id: String,
     pub name: String,
     pub members: Option<Vec<String>>, //wth can be missing?
-    pub is_member: bool
+    pub is_member: bool,
+    pub is_general: bool
 }
 
 pub fn new_from_str(json: &str) -> DecodeResult<Channel> {
     json::decode::<Channel>(json)
 }
+
+// Members or properties changing doesn't make it a different channel.
+// impl PartialEq for Channel {
+//     fn eq(&self, other: &Channel) -> bool {
+//         self.id == other.id
+//     }
+// }
+
+// impl Eq for Channel {}
 
 #[cfg(test)]
 mod test {

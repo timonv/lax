@@ -5,7 +5,7 @@ use std::fmt;
 use user::User;
 use channel::Channel;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Message {
     pub ts: Option<String>,
     pub text: Option<String>,

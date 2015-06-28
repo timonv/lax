@@ -63,6 +63,14 @@ impl CurrentState {
         Ok(message)
     }
 
+    pub fn name_to_channel(&self, name: &str) -> Option<&Channel> {
+        self.channels.iter().find(|channel| channel.name == name)
+    }
+
+    pub fn default_channel(&self) -> Option<&Channel> {
+        self.channels.iter().find(|channel| channel.is_general == true)
+    }
+
     fn id_to_user(&self, id: &str) -> Option<&User> {
         self.users.iter().find(|user| user.id == id)
     }
@@ -70,6 +78,7 @@ impl CurrentState {
     fn id_to_channel(&self, id: &str) -> Option<&Channel> {
         self.channels.iter().find(|channel| channel.id == id)
     }
+
 }
 
 #[cfg(test)]

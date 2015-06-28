@@ -21,6 +21,7 @@ mod channel;
 mod current_state;
 mod dispatcher;
 mod view;
+mod view_data;
 mod input_parser;
 
 use view::View;

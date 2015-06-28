@@ -2,6 +2,7 @@ use std::thread;
 use std::sync::{mpsc,Arc, Mutex};
 use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
 use ncurses::*;
+use view_data::ViewData;
 
 pub struct View {
     max_x: i32,
@@ -32,15 +33,10 @@ impl View {
     // Rather have ncurses call a callback
     // instead of a receiver to cut the dependency
     // but couldn't get it to work
-    pub fn init(&mut self, onInput: Box<Fn(String)>, print_rx: mpsc::Receiver<String>) {
+    pub fn init(&self, on_input: Box<Fn(String)>, view_data: mpsc::Receiver<ViewData>) {
         self.draw_prompt();
         let mut input = String::new();
         loop {
-            match  print_rx.try_recv() {
-                Ok(message) => self.print_message(message),
-                _ => ()
-            }
-
             let ch = wgetch(self.input);
             if ch == ERR { continue };
             if ch != '\n' as i32 && ch != '\r' as i32 {
@@ -49,7 +45,7 @@ impl View {
                 mvwprintw(self.input, 1, 3, &input);
                 wrefresh(self.input);
             } else {
-                onInput(input);
+                on_input(input);
                 input = String::new();
                 self.draw_prompt();
             }
@@ -64,9 +60,11 @@ impl View {
         wrefresh(self.messages);
     }
 
-    // fn prompt_input(&self) -> String {
-    //     wgetch(self.input)
-    // }
+    pub fn print_debug(&self, mut string: String) {
+        string = "DEBUG: ".to_string() + &string + "\n";
+        wprintw(self.messages, &string);
+        wrefresh(self.messages);
+    }
 
     fn draw_prompt(&self) {
         wclear(self.input);

@@ -8,6 +8,7 @@ use channel::Channel;
 use current_state::{self, CurrentState};
 use dispatcher::{self, DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
 use view::View;
+use view_data::ViewData;
 
 pub struct DisplayController {
    _input_guard: Option<thread::JoinHandle<()>>,
@@ -35,42 +36,53 @@ impl DisplayController {
 
    pub fn start(&mut self) {
       // For communicating from and to the view
-      let (print_tx, print_rx) = mpsc::channel::<String>();
+      let (view_tx, view_rx) = mpsc::channel::<ViewData>();
 
-      self.spawn_view_loop(print_rx);
-      self.spawn_print_loop(print_tx);
+      self.spawn_view_loop(view_rx);
+      self.spawn_print_loop(view_tx);
    }
 
-   fn spawn_view_loop(&self, print_rx: mpsc::Receiver<String>) {
+   fn spawn_view_loop(&self, view_rx: mpsc::Receiver<ViewData>) {
       let broadcast_tx = self.broadcast_tx.clone().expect("Expected broadcaster to be present in display controller");
 
       thread::spawn(move || {
          let mut view = View::new();
-         let onInput = Box::new(move |string: String| {
+         let on_input = Box::new(move |string: String| {
             let (payload, dtype) = input_parser::parse(string);
             let message = DispatchMessage { payload: payload, dispatch_type: dtype };
             broadcast_tx.send(message).unwrap();
          });
-         view.init(onInput, print_rx);
+         view.init(on_input, view_rx);
       });
    }
 
-   fn spawn_print_loop(&self, print_tx: mpsc::Sender<String>) {
+   fn spawn_print_loop(&self, view_tx: mpsc::Sender<ViewData>) {
       let rx = self.subscribe_rx.clone();
       let state = self.current_state.clone();
+      let default_channel = self.default_channel();
+
       thread::spawn(move || {
+         let mut view_data = ViewData::new(default_channel.clone());
          loop {
             let message = rx.lock().unwrap().recv().unwrap();
             match message.dispatch_type {
                DispatchType::RawIncomingMessage => {
-                  let parsed = state.lock().unwrap().parse_incoming_message(&message.payload);
-                  print_tx.send(format!("{}", parsed.unwrap())).ok().expect("could not send to view");
+                  let parsed = state.lock().unwrap().parse_incoming_message(&message.payload).unwrap();
+                  // Innefficient clone that saves a clone on the parsed, lesser evil
+                  let channel = parsed.channel.clone();
+                  // Would be nice if rust could figure out parsed was done and movable after the if
+                  if channel.is_some() && channel.unwrap() == view_data.channel {
+                     view_data.add_message(parsed)
+                  } else {
+                     view_data.add_debug(format!("{}", parsed))
+                  }
                },
                DispatchType::UserInput => {
-                  print_tx.send(format!("User input: {}", &message.payload)).ok().expect("could not send to view");
+                  view_data.add_debug(format!("User input: {}", &message.payload))
                }
                _ => ()
             }
+            view_tx.send(view_data.clone());
          }
       });
    }
@@ -78,6 +90,12 @@ impl DisplayController {
    fn print_message(&self, message: Message) -> Result<(), &'static str> {
       println!("{}", message);
       Ok(())
+   }
+
+   fn default_channel(&self) -> Channel {
+      self.current_state.lock().unwrap().default_channel()
+         .expect("Could not find default channel")
+         .clone()
    }
 }
 
