@@ -90,6 +90,10 @@ impl DisplayController {
                      }
                   }
                },
+               DispatchType::ListChannels => {
+                  let channel_names = state.lock().unwrap().channel_names();
+                  view_data.add_debug(format!("Channels: {}", channel_names.connect(", ")));
+               },
                _ => ()
             }
             view_tx.send(view_data.clone()).unwrap();

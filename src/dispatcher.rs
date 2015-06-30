@@ -13,6 +13,7 @@ pub enum DispatchType {
     ChangeCurrentChannel,
     OutgoingMessage,
     RawIncomingMessage,
+    ListChannels,
     UserInput,
 }
 

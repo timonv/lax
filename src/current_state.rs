@@ -71,6 +71,11 @@ impl CurrentState {
         self.channels.iter().find(|channel| channel.is_general == true)
     }
 
+    pub fn channel_names(&self) -> Vec<String> {
+        self.channels.iter().map(|ref channel| channel.name.clone() ).collect()
+    }
+
+
     fn id_to_user(&self, id: &str) -> Option<&User> {
         self.users.iter().find(|user| user.id == id)
     }
@@ -123,10 +128,17 @@ mod test {
         assert_eq!(message.user.unwrap().name, "Matijs");
     }
 
+    #[test]
     fn test_name_to_channel() {
         let state = new_from_str(&generate_json());
         let channel = state.name_to_channel("General").expect("Could not find channel");
         assert_eq!(channel.name, "General");
+    }
+
+    #[test]
+    fn test_channel_names() {
+        let state = new_from_str(&generate_json());
+        assert_eq!(state.channel_names(), vec!["General", "Dev"]);
     }
 
     fn generate_json() -> String {
@@ -165,7 +177,15 @@ mod test {
                     \"members\": [],
                     \"is_member\": false,
                     \"is_general\": false
-                } 
+                },
+                {
+                    \"id\": \"xyz\",
+                    \"name\": \"Dev\",
+                    \"members\": [],
+                    \"is_member\": false,
+                    \"is_general\": false
+                }
+
             ],
             \"groups\": [ ],
             \"ims\": [ ],
