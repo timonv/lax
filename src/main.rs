@@ -1,10 +1,8 @@
-#![feature(rustc_private)] // TODO Migrate to crates.io variant (json)
 #![feature(slice_patterns)] // drool
 #![feature(convert)]
 
 extern crate hyper;
 extern crate regex;
-extern crate serialize;
 extern crate websocket;
 extern crate rustc_serialize;
 extern crate ncurses;

@@ -1,14 +1,13 @@
-use serialize::json::{self, DecodeResult};
+use rustc_serialize::json::{self, DecoderError};
 
-// Deprecated but RustcDecodable fails, wat
-#[derive(Decodable, Clone, Debug)]
+#[derive(RustcDecodable, Clone, Debug)]
 pub struct User {
     pub id: String,
     pub name: String,
     pub color: Option<String>
 }
 
-pub fn new_from_str(json: &str) -> DecodeResult<User> {
+pub fn new_from_str(json: &str) -> Result<User, DecoderError> {
     json::decode::<User>(json)
 }
 

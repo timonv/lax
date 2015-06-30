@@ -1,7 +1,6 @@
-use serialize::json::{self, DecodeResult};
+use rustc_serialize::json::{self, DecoderError};
 
-// Deprecated but RustcDecodable fails, wat
-#[derive(Decodable, Clone, Debug, PartialEq, Eq)]
+#[derive(RustcDecodable, Clone, Debug, PartialEq, Eq)]
 pub struct Channel {
     pub id: String,
     pub name: String,
@@ -10,7 +9,7 @@ pub struct Channel {
     pub is_general: bool
 }
 
-pub fn new_from_str(json: &str) -> DecodeResult<Channel> {
+pub fn new_from_str(json: &str) -> Result<Channel, DecoderError>{
     json::decode::<Channel>(json)
 }
 

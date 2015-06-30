@@ -3,7 +3,7 @@ use hyper::client::{Client};
 use hyper::server::{Server, Request, Response, Listening};
 use hyper::uri::RequestUri::AbsolutePath;
 use regex::Regex;
-use serialize::json;
+use rustc_serialize::json::Json;
 use std::fs;
 use std::io::prelude::*;
 use std::process::Command;
@@ -96,7 +96,7 @@ fn request_token(temp_code: &TempCode) -> AuthToken {
     let mut res = client.get(format_access_uri(temp_code).as_str()).send().unwrap();
     let mut body = String::new();
     res.read_to_string(&mut body).unwrap();
-    match json::from_str(&body) {
+    match Json::from_str(&body) {
         Ok(json) => {
             match json.find("access_token") {
                 Some(j) => j.as_string().unwrap().to_string(),

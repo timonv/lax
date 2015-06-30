@@ -5,7 +5,7 @@
 
 // std
 use std::io::prelude::*;
-use serialize::json;
+use rustc_serialize::json::Json;
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, RwLock};
@@ -164,7 +164,7 @@ impl SlackStream {
     pub fn establish_stream(&mut self, authtoken: &str) {
         let initial_state = request_realtime_messaging(authtoken);
         // println!("{}", initial_state);
-        let json = json::from_str(&initial_state).unwrap();
+        let json = Json::from_str(&initial_state).unwrap();
 
         // As per example
         let wss_url = Url::parse(json.find("url").unwrap().as_string().unwrap()).unwrap();

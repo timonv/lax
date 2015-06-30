@@ -1,5 +1,5 @@
-use serialize::json::{self, DecodeResult};
-use serialize::{Decodable, Decoder};
+use rustc_serialize::json::{self, DecoderError};
+use rustc_serialize::{Decodable, Decoder};
 use std::fmt;
 
 use user::User;
@@ -18,7 +18,7 @@ pub struct Message {
 
 }
 
-pub fn new_from_str(payload: &str) -> DecodeResult<Message> {
+pub fn new_from_str(payload: &str) -> Result<Message, DecoderError> {
     json::decode::<Message>(payload)
 }
 

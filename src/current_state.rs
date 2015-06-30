@@ -1,4 +1,5 @@
-use serialize::json;
+// Yolo code, badly needs cleanup
+use rustc_serialize::json::{self, DecoderError, Json};
 
 use channel::{self, Channel};
 use user::{self, User};
@@ -22,7 +23,7 @@ pub fn new_from_str(json: &str) -> CurrentState {
 fn extract_me(json: &str) -> User {
     // Hideous, maybe better to just manually implement decodable?
     // also use try! instead.
-    let json = json::from_str(json).unwrap();
+    let json = Json::from_str(json).unwrap();
     let val = json.find("self").unwrap();
     user::new_from_str(json::encode(&val.as_object()).unwrap().as_ref()).unwrap()
 }
@@ -30,7 +31,7 @@ fn extract_me(json: &str) -> User {
 fn extract_users(json: &str) -> Vec<User> {
     // Hideous, maybe better to just manually implement decodable?
     // also use try! instead.
-    let json = json::from_str(json).unwrap();
+    let json = Json::from_str(json).unwrap();
     json.find("users").unwrap().as_array().unwrap().iter().map(|user| {
         user::new_from_str(json::encode(user.as_object().unwrap()).unwrap().as_ref()).unwrap()
     }).collect()
@@ -39,7 +40,7 @@ fn extract_users(json: &str) -> Vec<User> {
 fn extract_channels(json: &str) -> Vec<Channel> {
     // Hideous, maybe better to just manually implement decodable?
     // also use try! instead.
-    let json = json::from_str(json).unwrap();
+    let json = Json::from_str(json).unwrap();
     json.find("channels").unwrap().as_array().unwrap().iter().map(|channel| {
         channel::new_from_str(json::encode(channel.as_object().unwrap()).unwrap().as_ref()).unwrap()
     }).collect()
