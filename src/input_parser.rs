@@ -1,4 +1,4 @@
-use dispatcher::DispatchType;
+use dispatch_type::DispatchType;
 
 // Return tuple for less dependencies
 pub fn parse(payload: String) -> (String, DispatchType) {
@@ -18,7 +18,7 @@ pub fn parse(payload: String) -> (String, DispatchType) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use dispatcher::DispatchType;
+    use dispatch_type::DispatchType;
 
     #[test]
     fn test_normal_input() {

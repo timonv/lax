@@ -5,7 +5,8 @@ use input_parser;
 use message::Message;
 use channel::Channel;
 use current_state::{self, CurrentState};
-use dispatcher::{DispatchType, Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
+use rdispatcher::{Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
+use dispatch_type::DispatchType;
 use view::View;
 use view_data::ViewData;
 
@@ -13,15 +14,15 @@ pub struct DisplayController {
    _input_guard: Option<thread::JoinHandle<()>>,
    _output_guard: Option<thread::JoinHandle<()>>,
    current_state: Arc<Mutex<CurrentState>>,
-   subscribe_tx: mpsc::Sender<DispatchMessage>,
-   subscribe_rx: Arc<Mutex<mpsc::Receiver<DispatchMessage>>>,
-   broadcast_tx: Option<mpsc::Sender<DispatchMessage>>
+   subscribe_tx: mpsc::Sender<DispatchMessage<DispatchType>>,
+   subscribe_rx: Arc<Mutex<mpsc::Receiver<DispatchMessage<DispatchType>>>>,
+   broadcast_tx: Option<mpsc::Sender<DispatchMessage<DispatchType>>>
 }
 
 impl DisplayController {
    pub fn new(initial_state: &str) -> DisplayController {
       let initial_state = current_state::new_from_str(&initial_state);
-      let (tx, rx) = mpsc::channel::<DispatchMessage>();
+      let (tx, rx) = mpsc::channel::<DispatchMessage<DispatchType>>();
 
       DisplayController {
          _input_guard: None,
@@ -108,15 +109,15 @@ impl DisplayController {
    }
 }
 
-impl Subscribe for DisplayController {
-   fn subscribe_handle(&self) -> SubscribeHandle {
+impl Subscribe<DispatchType> for DisplayController {
+   fn subscribe_handle(&self) -> SubscribeHandle<DispatchType> {
       self.subscribe_tx.clone()
    }
 }
 
-impl Broadcast for DisplayController {
-    fn broadcast_handle(&mut self) -> BroadcastHandle {
-        let (tx, rx) = mpsc::channel::<DispatchMessage>();
+impl Broadcast<DispatchType> for DisplayController {
+    fn broadcast_handle(&mut self) -> BroadcastHandle<DispatchType> {
+        let (tx, rx) = mpsc::channel::<DispatchMessage<DispatchType>>();
         self.broadcast_tx = Some(tx);
         rx
     }

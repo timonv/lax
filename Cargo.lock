@@ -4,6 +4,7 @@ version = "0.0.1"
 dependencies = [
  "hyper 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ncurses 5.73.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rdispatcher 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "websocket 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -156,6 +157,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "rdispatcher"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "regex"

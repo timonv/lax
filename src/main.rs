@@ -6,22 +6,24 @@ extern crate regex;
 extern crate websocket;
 extern crate rustc_serialize;
 extern crate ncurses;
+extern crate rdispatcher;
 
 mod authentication;
-mod slack_stream;
-mod display_controller;
-mod user;
-mod message;
 mod channel;
 mod current_state;
-mod dispatcher;
+mod dispatch_type;
+mod display_controller;
+mod input_parser;
+mod message;
+mod slack_stream;
+mod user;
 mod view;
 mod view_data;
-mod input_parser;
 
 use slack_stream::SlackStream;
-use dispatcher::{Dispatcher, DispatchType};
 use display_controller::DisplayController;
+use dispatch_type::DispatchType;
+use rdispatcher::Dispatcher;
 
 #[allow(dead_code)]
 fn main() {

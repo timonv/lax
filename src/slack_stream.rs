@@ -22,7 +22,8 @@ use websocket::Receiver as WssReceiverTrait;
 use websocket::client::request::Url;
 use websocket::stream::WebSocketStream;
 
-use dispatcher::{self};
+use rdispatcher::{self};
+use dispatch_type::DispatchType;
 
 // TODO Use this
 // const SLACK_RTM_START: &'static str = "https://slack.com/api/rtm.start?token={}";
@@ -37,7 +38,7 @@ pub struct SlackStream {
     _sender_guard: Option<thread::JoinHandle<()>>,
 
     _outgoing_sender: Option<Sender<Message>>,
-    _incoming_sender: Option<Sender<dispatcher::DispatchMessage>>,
+    _incoming_sender: Option<Sender<rdispatcher::DispatchMessage<DispatchType>>>,
 }
 
 fn request_realtime_messaging(authtoken: &str) -> String {
@@ -83,7 +84,7 @@ fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_rece
     send_guard
 }
 
-fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<dispatcher::DispatchMessage>) -> thread::JoinHandle<()> {
+fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<rdispatcher::DispatchMessage<DispatchType>>) -> thread::JoinHandle<()> {
     // Double thread to keep receiver alive
     // Previously crashed because ssl
     thread::spawn(move || {
@@ -180,7 +181,7 @@ impl SlackStream {
 
         // Incoming messages are send via websockets to the sender, to the receiver, to the consumer
         // (i.e. UI)
-        // let (incoming_sender, incoming_receiver) = channel::<dispatcher::DispatchMessage>();
+        // let (incoming_sender, incoming_receiver) = channel::<rdispatcher::DispatchMessage>();
 
         let incoming_sender = self._incoming_sender.clone().expect("Expected incoming sender");
         let send_guard = spawn_send_loop(sender, outgoing_receiver);
@@ -219,14 +220,14 @@ impl SlackStream {
     }
 }
 
-impl dispatcher::Broadcast for SlackStream {
-    fn broadcast_handle(&mut self) -> dispatcher::BroadcastHandle {
-        let (incoming_sender, incoming_receiver) = channel::<dispatcher::DispatchMessage>();
+impl rdispatcher::Broadcast<DispatchType> for SlackStream {
+    fn broadcast_handle(&mut self) -> rdispatcher::BroadcastHandle<DispatchType> {
+        let (incoming_sender, incoming_receiver) = channel::<rdispatcher::DispatchMessage<DispatchType>>();
         self._incoming_sender = Some(incoming_sender);
         incoming_receiver
     }
 }
 
-fn as_dispatch_message(payload: String) -> dispatcher::DispatchMessage {
-    dispatcher::DispatchMessage { dispatch_type: dispatcher::DispatchType::RawIncomingMessage, payload: payload }
+fn as_dispatch_message(payload: String) -> rdispatcher::DispatchMessage<DispatchType> {
+    rdispatcher::DispatchMessage { dispatch_type: DispatchType::RawIncomingMessage, payload: payload }
 }
