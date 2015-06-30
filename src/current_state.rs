@@ -1,5 +1,5 @@
 // Yolo code, badly needs cleanup
-use rustc_serialize::json::{self, DecoderError, Json};
+use rustc_serialize::json::{self, Json};
 
 use channel::{self, Channel};
 use user::{self, User};

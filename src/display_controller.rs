@@ -2,7 +2,6 @@ use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
 
 use input_parser;
-use message::Message;
 use channel::Channel;
 use current_state::{self, CurrentState};
 use rdispatcher::{Subscribe, SubscribeHandle, DispatchMessage, Broadcast, BroadcastHandle};
