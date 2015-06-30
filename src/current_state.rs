@@ -123,6 +123,12 @@ mod test {
         assert_eq!(message.user.unwrap().name, "Matijs");
     }
 
+    fn test_name_to_channel() {
+        let state = new_from_str(&generate_json());
+        let channel = state.name_to_channel("General").expect("Could not find channel");
+        assert_eq!(channel.name, "General");
+    }
+
     fn generate_json() -> String {
         "{
             \"ok\": true,

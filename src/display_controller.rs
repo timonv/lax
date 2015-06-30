@@ -78,7 +78,18 @@ impl DisplayController {
                },
                DispatchType::UserInput => {
                   view_data.add_debug(format!("User input: {}", &message.payload))
-               }
+               },
+               DispatchType::ChangeCurrentChannel => {
+                  match state.lock().unwrap().name_to_channel(&message.payload) {
+                     Some(channel) => {
+                        view_data = ViewData::new(channel.clone());
+                        view_data.add_debug(format!("Changed channel to: {}", channel.name))
+                     },
+                     None => {
+                        view_data.add_debug(format!("Channel not found: {}", &message.payload))
+                     }
+                  }
+               },
                _ => ()
             }
             view_tx.send(view_data.clone()).unwrap();

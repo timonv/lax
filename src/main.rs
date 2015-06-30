@@ -39,8 +39,7 @@ fn main() {
 
     let mut display = DisplayController::new(&initial);
     dispatcher.register_subscriber(&mut display, DispatchType::RawIncomingMessage);
-
-    // For now
+    dispatcher.register_subscriber(&mut display, DispatchType::ChangeCurrentChannel);
     dispatcher.register_subscriber(&mut display, DispatchType::UserInput);
     dispatcher.register_broadcaster(&mut display);
 
