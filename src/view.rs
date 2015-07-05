@@ -2,6 +2,7 @@ use std::sync::mpsc;
 use ncurses::*;
 use view_data::ViewData;
 use message::Message;
+use channel::Channel;
 
 pub struct View {
     messages: WINDOW,
@@ -30,7 +31,7 @@ impl View {
     // Rather have ncurses call a callback
     // instead of a receiver to cut the dependency
     // but couldn't get it to work
-    pub fn init(&mut self, on_input: Box<Fn(String)>, view_data_rx: mpsc::Receiver<ViewData>) {
+    pub fn init(&mut self, on_input: Box<Fn(String, String)>, view_data_rx: mpsc::Receiver<ViewData>) {
         self.draw_prompt();
         let mut input = String::new();
         loop {
@@ -51,7 +52,7 @@ impl View {
                 mvwprintw(self.input, 1, (self.current_prompt().len() + 1) as i32, &input);
                 wrefresh(self.input);
             } else {
-                on_input(input);
+                on_input(input, self.current_channel().id.clone());
                 input = String::new();
                 self.draw_prompt();
             }
@@ -71,6 +72,13 @@ impl View {
         wrefresh(self.messages);
     }
 
+    fn current_channel(&self) -> &Channel {
+       &self.view_data
+           .as_ref()
+           .expect("Trying to get current channel without viewdata")
+           .channel
+    }
+
     fn draw_prompt(&self) {
         wclear(self.input);
         let top = 0 as chtype;
@@ -86,7 +94,7 @@ impl View {
     fn current_prompt(&self) -> String {
         if self.view_data.is_none() { return "> ".to_string() }
 
-        let name = &self.view_data.as_ref().unwrap().channel.name;
+        let name = &self.current_channel().name;
         format!("#{} > ", name)
     }
 

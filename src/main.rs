@@ -32,15 +32,15 @@ fn main() {
 
 
     let mut slack_stream = SlackStream::new();
+
     dispatcher.register_broadcaster(&mut slack_stream);
-
     slack_stream.establish_stream(&token);
-    let initial = slack_stream.initial_state.clone().expect("Expected initial state");
+    dispatcher.register_subscriber(&mut slack_stream, DispatchType::UserInput); // wtf
 
+    let initial = slack_stream.initial_state.clone().expect("Expected initial state");
     let mut display = DisplayController::new(&initial);
     dispatcher.register_subscriber(&mut display, DispatchType::RawIncomingMessage);
     dispatcher.register_subscriber(&mut display, DispatchType::ChangeCurrentChannel);
-    dispatcher.register_subscriber(&mut display, DispatchType::UserInput);
     dispatcher.register_subscriber(&mut display, DispatchType::ListChannels);
     dispatcher.register_broadcaster(&mut display);
 

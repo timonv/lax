@@ -46,8 +46,8 @@ impl DisplayController {
 
       thread::spawn(move || {
          let mut view = View::new();
-         let on_input = Box::new(move |string: String| {
-            let (payload, dtype) = input_parser::parse(string);
+         let on_input = Box::new(move |string: String, channel_id: String| {
+            let (payload, dtype) = input_parser::parse(string, channel_id);
             let message = DispatchMessage { payload: payload, dispatch_type: dtype };
             broadcast_tx.send(message).unwrap();
          });
@@ -76,9 +76,9 @@ impl DisplayController {
                      view_data.add_debug(format!("{}", parsed))
                   }
                },
-               DispatchType::UserInput => {
-                  view_data.add_debug(format!("User input: {}", &message.payload))
-               },
+               // DispatchType::UserInput => {
+               //    view_data.add_debug(format!("User input: {}", &message.payload))
+               // },
                DispatchType::ChangeCurrentChannel => {
                   match state.lock().unwrap().name_to_channel(&message.payload) {
                      Some(channel) => {

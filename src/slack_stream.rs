@@ -5,10 +5,11 @@
 
 // std
 use std::io::prelude::*;
-use rustc_serialize::json::Json;
+use rustc_serialize::json::{self, Json, ToJson};
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, RwLock};
+use std::collections::BTreeMap;
 
 // extern
 use hyper::client::Client as HttpClient;
@@ -22,7 +23,7 @@ use websocket::Receiver as WssReceiverTrait;
 use websocket::client::request::Url;
 use websocket::stream::WebSocketStream;
 
-use rdispatcher::{self};
+use rdispatcher::{self, DispatchMessage};
 use dispatch_type::DispatchType;
 
 // TODO Use this
@@ -39,6 +40,7 @@ pub struct SlackStream {
 
     _outgoing_sender: Option<Sender<Message>>,
     _incoming_sender: Option<Sender<rdispatcher::DispatchMessage<DispatchType>>>,
+    sender_for_subscribe: Option<Sender<rdispatcher::DispatchMessage<DispatchType>>>
 }
 
 fn request_realtime_messaging(authtoken: &str) -> String {
@@ -151,6 +153,39 @@ fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_s
     })
 }
 
+// #[derive(RustcEncodable)]
+struct NormalizedSlackMessage {
+    id: i32,
+    channel: String,
+    text: String,
+    type_: String
+}
+
+impl ToJson for NormalizedSlackMessage {
+    fn to_json(&self) -> Json {
+        let mut d = BTreeMap::new();
+        d.insert("id".to_string(), self.id.to_json());
+        d.insert("channel".to_string(), self.channel.to_json());
+        d.insert("text".to_string(), self.text.to_json());
+        d.insert("type".to_string(), self.type_.to_json());
+        Json::Object(d)
+    }
+}
+
+fn spawn_normalize_loop(normalize_rx: Receiver<DispatchMessage<DispatchType>>, outgoing_tx: Sender<Message>) {
+    thread::spawn(move || {
+        let mut id = 0;
+        loop {
+            let dmessage = normalize_rx.recv().unwrap();
+            let (channel_id, message) = json::decode(&dmessage.payload).unwrap();
+
+            let json = NormalizedSlackMessage { id: id, channel: channel_id, text: message , type_: "message".to_string()}.to_json();
+            id += 1;
+            outgoing_tx.send(Message::Text(json.to_string()));
+        }
+    });
+}
+
 impl SlackStream {
     pub fn new() -> SlackStream {
         SlackStream {
@@ -158,7 +193,8 @@ impl SlackStream {
             _receiver_guard: None,
             _sender_guard: None,
             _outgoing_sender: None,
-            _incoming_sender: None
+            _incoming_sender: None,
+            sender_for_subscribe: None
         }
     }
 
@@ -184,14 +220,21 @@ impl SlackStream {
         // let (incoming_sender, incoming_receiver) = channel::<rdispatcher::DispatchMessage>();
 
         let incoming_sender = self._incoming_sender.clone().expect("Expected incoming sender");
+
+        let (normalize_tx, normalize_rx) = channel::<DispatchMessage<DispatchType>>();
+
+        // Are the guards even needed?
         let send_guard = spawn_send_loop(sender, outgoing_receiver);
         let receiver_guard = spawn_receive_loop(receiver, outgoing_sender.clone(), incoming_sender);
+        
+        spawn_normalize_loop(normalize_rx, outgoing_sender.clone());
         println!("Spawned send and receive wss threads");
 
         self.initial_state = Some(initial_state);
         self._receiver_guard = Some(receiver_guard);
         self._sender_guard = Some(send_guard);
         self._outgoing_sender = Some(outgoing_sender);
+        self.sender_for_subscribe = Some(normalize_tx);
     }
 
     pub fn send_raw_to_slack(&self, message: String) {
@@ -225,6 +268,12 @@ impl rdispatcher::Broadcast<DispatchType> for SlackStream {
         let (incoming_sender, incoming_receiver) = channel::<rdispatcher::DispatchMessage<DispatchType>>();
         self._incoming_sender = Some(incoming_sender);
         incoming_receiver
+    }
+}
+
+impl rdispatcher::Subscribe<DispatchType> for SlackStream {
+    fn subscribe_handle(&self) -> rdispatcher::SubscribeHandle<DispatchType> {
+        self.sender_for_subscribe.clone().expect("Expected slack stream to have outgoing sender")
     }
 }
 

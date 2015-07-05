@@ -1,8 +1,7 @@
 #[derive(PartialEq, Debug, Clone)]
 pub enum DispatchType {
     ChangeCurrentChannel,
-    OutgoingMessage,
+    UserInput,
     RawIncomingMessage,
     ListChannels,
-    UserInput,
 }
