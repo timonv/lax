@@ -61,42 +61,61 @@ impl DisplayController {
       let default_channel = self.default_channel();
 
       thread::spawn(move || {
-         let mut view_data = ViewData::new(default_channel.clone());
+         let mut all_view_data: Vec<ViewData> = vec![];
+         let mut current_view_data = ViewData::new(default_channel.clone());
+            
          loop {
             let message = rx.lock().unwrap().recv().unwrap();
             match message.dispatch_type {
                DispatchType::RawIncomingMessage => {
                   let parsed = state.lock().unwrap().parse_incoming_message(&message.payload).unwrap();
-                  // Innefficient clone that saves a clone on the parsed, lesser evil
-                  let channel = parsed.channel.clone();
-                  // Would be nice if rust could figure out parsed was done and movable after the if
-                  if channel.is_some() && channel.unwrap() == view_data.channel {
-                     view_data.add_message(parsed)
-                  } else {
-                     view_data.add_debug(format!("{}", parsed))
+
+                  match parsed.channel.as_ref() {
+                     Some(channel) if channel == &current_view_data.channel => {
+                        current_view_data.add_message(parsed.clone())
+                     },
+                     Some(channel) => {
+                        for data in all_view_data.iter_mut() {
+                           if &data.channel == channel {
+                              data.add_message(parsed.clone());
+                              break;
+                           }
+                        }
+
+                     },
+                     None => current_view_data.add_debug(format!("{}", parsed))
                   }
                },
                // DispatchType::UserInput => {
-               //    view_data.add_debug(format!("User input: {}", &message.payload))
+               //    current_view_data.add_debug(format!("User input: {}", &message.payload))
                // },
                DispatchType::ChangeCurrentChannel => {
                   match state.lock().unwrap().name_to_channel(&message.payload) {
                      Some(channel) => {
-                        view_data = ViewData::new(channel.clone());
-                        view_data.add_debug(format!("Changed channel to: {}", channel.name))
+                        all_view_data.push(current_view_data.clone());
+                        match all_view_data.iter().position(|d| &d.channel == channel) {
+                           Some(idx) => {
+                              current_view_data = all_view_data.remove(idx);
+                           },
+                           None => {
+                              current_view_data = ViewData::new(channel.clone());
+
+                           }
+                        }
+                        current_view_data.add_debug(format!("Changed channel to: {}", channel.name))
                      },
                      None => {
-                        view_data.add_debug(format!("Channel not found: {}", &message.payload))
+                        current_view_data.add_debug(format!("Channel not found: {}", &message.payload))
                      }
                   }
                },
                DispatchType::ListChannels => {
                   let channel_names = state.lock().unwrap().channel_names();
-                  view_data.add_debug(format!("Channels: {}", channel_names.connect(", ")));
+                  current_view_data.add_debug(format!("Channels: {}", channel_names.connect(", ")));
                },
                _ => ()
             }
-            view_tx.send(view_data.clone()).unwrap();
+            view_tx.send(current_view_data.clone()).unwrap();
          }
       });
    }
