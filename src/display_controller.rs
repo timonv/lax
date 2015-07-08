@@ -68,23 +68,27 @@ impl DisplayController {
             let message = rx.lock().unwrap().recv().unwrap();
             match message.dispatch_type {
                DispatchType::RawIncomingMessage => {
-                  let parsed = state.lock().unwrap().parse_incoming_message(&message.payload).unwrap();
+                  match state.lock().unwrap().parse_incoming_message(&message.payload) {
+                     Ok(parsed) => {
+                        match parsed.channel.as_ref() {
+                           Some(channel) if channel == &current_view_data.channel => {
+                              current_view_data.add_message(parsed.clone())
+                           },
+                           Some(channel) => {
+                              for data in all_view_data.iter_mut() {
+                                 if &data.channel == channel {
+                                    data.add_message(parsed.clone());
+                                    break;
+                                 }
+                              }
 
-                  match parsed.channel.as_ref() {
-                     Some(channel) if channel == &current_view_data.channel => {
-                        current_view_data.add_message(parsed.clone())
-                     },
-                     Some(channel) => {
-                        for data in all_view_data.iter_mut() {
-                           if &data.channel == channel {
-                              data.add_message(parsed.clone());
-                              break;
-                           }
+                           },
+                           None => current_view_data.add_debug(format!("{}", parsed))
                         }
-
                      },
-                     None => current_view_data.add_debug(format!("{}", parsed))
-                  }
+                     Err(err) => current_view_data.add_debug(format!("Failed to parse message {} and gave err: {}",&message.payload, err))
+                  };
+
                },
                // DispatchType::UserInput => {
                //    current_view_data.add_debug(format!("User input: {}", &message.payload))
