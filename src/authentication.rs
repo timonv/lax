@@ -65,7 +65,7 @@ fn request_temp_code() -> (TempCode, Listening) {
     let (tx, rx) = channel();
     let mtx = Mutex::new(tx);
 
-    let server = Server::http(move |req: Request, res: Response| {
+    let mut guard = Server::http("127.0.0.1:9999").unwrap().handle(move |req: Request, res: Response| {
         match req.uri {
             AbsolutePath(ref path) => {
                 match extract_temp_code(&path) {
@@ -81,9 +81,7 @@ fn request_temp_code() -> (TempCode, Listening) {
         let mut res = res.start().unwrap();
         res.write_all(b"Thanks! Please return to Lax").unwrap();
         res.end().unwrap();
-    });
-
-    let mut guard = server.listen("127.0.0.1:9999").unwrap();
+    }).unwrap();
 
     let tempcode = rx.recv().unwrap();
     guard.close().unwrap();
