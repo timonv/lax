@@ -1,4 +1,6 @@
 #![feature(slice_patterns)] // drool
+#![feature(plugin)]
+#![plugin(json_macros)]
 #![feature(convert)]
 
 extern crate hyper;

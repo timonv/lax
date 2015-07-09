@@ -78,6 +78,7 @@ impl DisplayController {
                               for data in all_view_data.iter_mut() {
                                  if &data.channel == channel {
                                     data.add_message(parsed.clone());
+                                    data.has_unread = true;
                                     break;
                                  }
                               }
@@ -100,6 +101,7 @@ impl DisplayController {
                         match all_view_data.iter().position(|d| &d.channel == channel) {
                            Some(idx) => {
                               current_view_data = all_view_data.remove(idx);
+                              current_view_data.has_unread = false;
                            },
                            None => {
                               current_view_data = ViewData::new(channel.clone());
