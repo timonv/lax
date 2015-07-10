@@ -138,8 +138,10 @@ fn init_messages(max_y: i32, max_x: i32) -> WINDOW {
 
 fn init_input(max_y: i32, max_x: i32) -> WINDOW {
     let win = newwin(2, max_x, max_y - 2, 0);
-    nodelay(win, true);
+    // nodelay(win, true);
     // box_(win, 0, 0);
+    halfdelay(1); // Dirty fix for cpu cycles, needs better fix
+    // cbreak()
     wrefresh(win);
     win
 }

@@ -86,71 +86,50 @@ fn spawn_send_loop<'a>(mut wss_sender: WssSender<WebSocketStream>, outgoing_rece
     send_guard
 }
 
-fn spawn_receive_loop<'a>(wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<rdispatcher::DispatchMessage<DispatchType>>) -> thread::JoinHandle<()> {
-    // Double thread to keep receiver alive
-    // Previously crashed because ssl
-    thread::spawn(move || {
-        let arw_wss = Arc::new(RwLock::new(wss_receiver));
-        loop {
+fn spawn_receive_loop<'a>(mut wss_receiver: WssReceiver<WebSocketStream>, outgoing_sender: Sender<Message>, incoming_sender: Sender<rdispatcher::DispatchMessage<DispatchType>>) -> thread::JoinHandle<()> {
+    let outgoing_sender = outgoing_sender.clone();
+    let incoming_sender = incoming_sender.clone();
 
-            let arw_wss = arw_wss.clone();
+    let guard = thread::spawn(move || {
+        for message in wss_receiver.incoming_messages::<Message>() {
+            let message = match message {
+                Ok(m) => m,
+                Err(e) => {
+                    println!("Received error message: {:?}", e);
+                    break; // Ignore, next iter
+                }
+            };
 
-            let outgoing_sender = outgoing_sender.clone();
-            let incoming_sender = incoming_sender.clone();
-
-            let guard = thread::spawn(move || {
-                let mut wss_receiver = match arw_wss.write() {
-                    Ok(v) => v,
-                    Err(e) => {
-                        println!("Received error message! {:?}", e);
-                        return;
-                    }
-                };
-
-                for message in wss_receiver.incoming_messages::<Message>() {
-                    let message = match message {
-                        Ok(m) => m,
+            match message {
+                Message::Close(_) => {
+                    let _ = match outgoing_sender.send(Message::Close(None)) {
+                        Ok(()) => {
+                            println!("Received close message and server closed!");
+                            return; // Closing thread
+                        },
                         Err(e) => {
-                            println!("Received error message: {:?}", e);
-                            break; // Ignore, next iter
+                            println!("Receive failed close message: {:?}", e);
+                            return; // Closing thread
                         }
                     };
-
-                    match message {
-                        Message::Close(_) => {
-                            let _ = match outgoing_sender.send(Message::Close(None)) {
-                                Ok(()) => {
-                                    println!("Received close message and server closed!");
-                                    return; // Closing thread
-                                },
-                                Err(e) => {
-                                    println!("Receive failed close message: {:?}", e);
-                                    return; // Closing thread
-                                }
-                            };
-                        },
-                        // Ping keeps the connection alive
-                        Message::Ping(data) => match outgoing_sender.send(Message::Pong(data)) {
-                            Ok(()) => (),
-                            Err(e) => {
-                                println!("Receive failed ping message: {:?}", e);
-                                return;
-                            }
-
-                        },
-                        Message::Text(text_message) => incoming_sender.send(as_dispatch_message(text_message)).unwrap(),
-
-                        _ => panic!("Unknown message received from server!")
+                },
+                // Ping keeps the connection alive
+                Message::Ping(data) => match outgoing_sender.send(Message::Pong(data)) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        println!("Receive failed ping message: {:?}", e);
+                        return;
                     }
-                }
 
-            });
+                },
+                Message::Text(text_message) => incoming_sender.send(as_dispatch_message(text_message)).unwrap(),
 
-            if guard.join().is_err() {
-                println!("Respawning receiver thread!");
+                _ => panic!("Unknown message received from server!")
             }
         }
-    })
+
+    });
+    guard
 }
 
 // #[derive(RustcEncodable)]

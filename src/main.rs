@@ -2,6 +2,7 @@
 #![feature(plugin)]
 #![plugin(json_macros)]
 #![feature(convert)]
+#![feature(scoped)] // debugging > safety
 
 extern crate hyper;
 extern crate regex;
@@ -48,6 +49,4 @@ fn main() {
 
     display.start();
     dispatcher.start();
-
-    loop {}
 }

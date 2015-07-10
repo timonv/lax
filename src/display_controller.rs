@@ -9,23 +9,23 @@ use dispatch_type::DispatchType;
 use view::View;
 use view_data::ViewData;
 
-pub struct DisplayController {
-   _input_guard: Option<thread::JoinHandle<()>>,
-   _output_guard: Option<thread::JoinHandle<()>>,
+pub struct DisplayController<'a> {
+   _view_guard: Option<thread::JoinGuard<'a, ()>>,
+   _print_guard: Option<thread::JoinGuard<'a, ()>>,
    current_state: Arc<Mutex<CurrentState>>,
    subscribe_tx: mpsc::Sender<DispatchMessage<DispatchType>>,
    subscribe_rx: Arc<Mutex<mpsc::Receiver<DispatchMessage<DispatchType>>>>,
    broadcast_tx: Option<mpsc::Sender<DispatchMessage<DispatchType>>>
 }
 
-impl DisplayController {
+impl<'a> DisplayController<'a> {
    pub fn new(initial_state: &str) -> DisplayController {
       let initial_state = current_state::new_from_str(&initial_state);
       let (tx, rx) = mpsc::channel::<DispatchMessage<DispatchType>>();
 
       DisplayController {
-         _input_guard: None,
-         _output_guard: None,
+         _view_guard: None,
+         _print_guard: None,
          current_state: Arc::new(Mutex::new(initial_state)),
          subscribe_rx: Arc::new(Mutex::new(rx)),
          subscribe_tx: tx,
@@ -41,10 +41,10 @@ impl DisplayController {
       self.spawn_print_loop(view_tx);
    }
 
-   fn spawn_view_loop(&self, view_rx: mpsc::Receiver<ViewData>) {
+   fn spawn_view_loop(&mut self, view_rx: mpsc::Receiver<ViewData>) {
       let broadcast_tx = self.broadcast_tx.clone().expect("Expected broadcaster to be present in display controller");
 
-      thread::spawn(move || {
+      let guard = thread::scoped(move || {
          let mut view = View::new();
          let on_input = Box::new(move |string: String, channel_id: String| {
             let (payload, dtype) = input_parser::parse(string, channel_id);
@@ -53,14 +53,15 @@ impl DisplayController {
          });
          view.init(on_input, view_rx);
       });
+      self._view_guard = Some(guard);
    }
 
-   fn spawn_print_loop(&self, view_tx: mpsc::Sender<ViewData>) {
+   fn spawn_print_loop(&mut self, view_tx: mpsc::Sender<ViewData>) {
       let rx = self.subscribe_rx.clone();
       let state = self.current_state.clone();
       let default_channel = self.default_channel();
 
-      thread::spawn(move || {
+      let guard = thread::scoped(move || {
          let mut all_view_data: Vec<ViewData> = vec![];
          let mut current_view_data = ViewData::new(default_channel.clone());
             
@@ -124,6 +125,7 @@ impl DisplayController {
             view_tx.send(current_view_data.clone()).unwrap();
          }
       });
+      self._print_guard = Some(guard);
    }
 
    fn default_channel(&self) -> Channel {
@@ -133,13 +135,13 @@ impl DisplayController {
    }
 }
 
-impl Subscribe<DispatchType> for DisplayController {
+impl<'a> Subscribe<DispatchType> for DisplayController<'a> {
    fn subscribe_handle(&self) -> SubscribeHandle<DispatchType> {
       self.subscribe_tx.clone()
    }
 }
 
-impl Broadcast<DispatchType> for DisplayController {
+impl<'a> Broadcast<DispatchType> for DisplayController<'a> {
     fn broadcast_handle(&mut self) -> BroadcastHandle<DispatchType> {
         let (tx, rx) = mpsc::channel::<DispatchMessage<DispatchType>>();
         self.broadcast_tx = Some(tx);
