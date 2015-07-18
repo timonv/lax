@@ -63,65 +63,19 @@ impl<'a> DisplayController<'a> {
 
       let guard = thread::scoped(move || {
          let mut all_view_data: Vec<ViewData> = vec![];
-         let mut current_view_data = ViewData::new(default_channel.clone());
+         let mut current_view_data = ViewData::new(default_channel);
             
          loop {
             let message = rx.lock().unwrap().recv().unwrap();
+            let locked_state = state.lock().unwrap();
+
             match message.dispatch_type {
-               DispatchType::RawIncomingMessage => {
-                  match state.lock().unwrap().parse_incoming_message(&message.payload) {
-                     Ok(parsed) => {
-                        match parsed.channel.as_ref() {
-                           Some(channel) if channel == &current_view_data.channel => {
-                              current_view_data.add_message(parsed.clone())
-                           },
-                           Some(channel) => {
-                              for data in all_view_data.iter_mut() {
-                                 if &data.channel == channel {
-                                    data.add_message(parsed.clone());
-                                    data.has_unread = true;
-                                    break;
-                                 }
-                              }
-
-                           },
-                           None => current_view_data.add_debug(format!("{}", parsed))
-                        }
-                     },
-                     Err(err) => current_view_data.add_debug(format!("Failed to parse message {} and gave err: {}",&message.payload, err))
-                  };
-
-               },
-               // DispatchType::UserInput => {
-               //    current_view_data.add_debug(format!("User input: {}", &message.payload))
-               // },
-               DispatchType::ChangeCurrentChannel => {
-                  match state.lock().unwrap().name_to_channel(&message.payload) {
-                     Some(channel) => {
-                        all_view_data.push(current_view_data.clone());
-                        match all_view_data.iter().position(|d| &d.channel == channel) {
-                           Some(idx) => {
-                              current_view_data = all_view_data.remove(idx);
-                              current_view_data.has_unread = false;
-                           },
-                           None => {
-                              current_view_data = ViewData::new(channel.clone());
-
-                           }
-                        }
-                        current_view_data.add_debug(format!("Changed channel to: {}", channel.name))
-                     },
-                     None => {
-                        current_view_data.add_debug(format!("Channel not found: {}", &message.payload))
-                     }
-                  }
-               },
-               DispatchType::ListChannels => {
-                  let channel_names = state.lock().unwrap().channel_names();
-                  current_view_data.add_debug(format!("Channels: {}", channel_names.connect(", ")));
-               },
-               _ => ()
+               DispatchType::RawIncomingMessage   => handle_raw_incoming(&message.payload, &locked_state, &mut current_view_data, &mut all_view_data),
+               DispatchType::ChangeCurrentChannel => handle_change_current_channel(&message.payload, &locked_state, &mut current_view_data, &mut all_view_data),
+               DispatchType::ListChannels         => handle_list_channels(&message.payload, &locked_state, &mut current_view_data, &mut all_view_data),
+               _ => panic!("Got something I didn't expect: {:?}", message.payload)
             }
+            current_view_data.update_unread(&all_view_data);
             view_tx.send(current_view_data.clone()).unwrap();
          }
       });
@@ -133,6 +87,57 @@ impl<'a> DisplayController<'a> {
          .expect("Could not find default channel")
          .clone()
    }
+}
+
+fn handle_raw_incoming(payload: &str, state: &CurrentState, current_view_data: &mut ViewData, all_view_data: &mut Vec<ViewData>) {
+   match state.parse_incoming_message(payload) {
+      Ok(parsed) => {
+         match parsed.channel.as_ref() {
+            Some(channel) if channel == &current_view_data.channel => {
+               current_view_data.add_message(parsed.clone())
+            },
+            Some(channel) => {
+               for data in all_view_data.iter_mut() {
+                  if &data.channel == channel {
+                     data.add_message(parsed.clone());
+                     data.has_unread = true;
+                     break;
+                  }
+               }
+
+            },
+            None => current_view_data.add_debug(format!("{}", parsed))
+         }
+      },
+      Err(err) => current_view_data.add_debug(format!("Failed to parse message {} and gave err: {}",payload, err))
+   };
+}
+
+fn handle_change_current_channel(payload: &str, state: &CurrentState, mut current_view_data: &mut ViewData, all_view_data: &mut Vec<ViewData>) {
+   match state.name_to_channel(payload) {
+      Some(channel) => {
+         all_view_data.push(current_view_data.clone());
+         match all_view_data.iter().position(|d| &d.channel == channel) {
+            Some(idx) => {
+               *current_view_data = all_view_data.remove(idx);
+               current_view_data.has_unread = false;
+            },
+            None => {
+               *current_view_data = ViewData::new(channel.clone());
+
+            }
+         }
+         current_view_data.add_debug(format!("Changed channel to: {}", channel.name))
+      },
+      None => {
+         current_view_data.add_debug(format!("Channel not found: {}", payload))
+      }
+   }
+}
+
+fn handle_list_channels(payload: &str, state: &CurrentState, current_view_data: &mut ViewData, all_view_data: &mut Vec<ViewData>) {
+   let channel_names = state.channel_names();
+   current_view_data.add_debug(format!("Channels: {}", channel_names.connect(", ")));
 }
 
 impl<'a> Subscribe<DispatchType> for DisplayController<'a> {

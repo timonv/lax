@@ -7,6 +7,7 @@ use channel::Channel;
 pub struct View {
     messages: WINDOW,
     input: WINDOW,
+    unread: WINDOW,
     view_data: Option<ViewData>
 }
 
@@ -20,10 +21,12 @@ impl View {
 
         let messages = init_messages(max_y, max_x);
         let input = init_input(max_y, max_x);
+        let unread = init_unread(max_y, max_y);
 
         View {
             messages: messages,
             input: input,
+            unread: unread,
             view_data: None
         }
     }
@@ -91,6 +94,21 @@ impl View {
         wrefresh(self.input);
     }
 
+    fn draw_unread(&self) {
+        wclear(self.unread);
+        let channels = &self.view_data.as_ref().unwrap().unread_channels;
+        self.print_debug(&format!("Unread channels: {}", channels.len()));
+        attron(A_BOLD());
+        wmove(self.unread, 0, 1);
+        for channel in channels {
+            wprintw(self.unread, &format!("#{}", channel.name));
+            self.print_debug(&format!("{}", channel.name));
+            wmove(self.unread, 0, (channel.name.len() + 2) as i32);
+        }
+        attroff(A_BOLD());
+        wrefresh(self.unread);
+    }
+
     fn current_prompt(&self) -> String {
         if self.view_data.is_none() { return "> ".to_string() }
 
@@ -101,6 +119,8 @@ impl View {
     // Naively redraws the whole UI by clearing all data
     fn naive_redraw(&self) {
         if self.view_data.is_none() { return };
+
+        self.draw_unread();
 
         wclear(self.messages);
 
@@ -125,7 +145,7 @@ impl Drop for View {
 }
 
 fn init_messages(max_y: i32, max_x: i32) -> WINDOW {
-    let win = newwin(max_y - 2, max_x, 0, 0);
+    let win = newwin(max_y - 3, max_x, 0, 0);
     let top = ' ' as chtype;
     let bottom = ' ' as chtype;
     let empty = ' ' as chtype;
@@ -145,4 +165,11 @@ fn init_input(max_y: i32, max_x: i32) -> WINDOW {
     wrefresh(win);
     win
 }
+
+fn init_unread(max_y: i32, max_x: i32) -> WINDOW {
+    let win = newwin(1, max_x, max_y - 3, 0);
+    wrefresh(win);
+    win
+}
+
 
