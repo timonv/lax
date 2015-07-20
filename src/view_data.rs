@@ -4,16 +4,16 @@ use channel::Channel;
 // What the view renders at any given time
 #[derive(Clone)]
 pub struct ViewData {
-    pub messages: Vec<Message>,
+    pub messages: Vec<(Message)>,
     pub channel: Channel,
-    pub debug: Vec<String>,
     pub has_unread: bool,
-    pub unread_channels: Vec<Channel>
+    pub unread_channels: Vec<Channel>,
+    clock: u32
 }
 
 impl ViewData {
     pub fn new(channel: Channel) -> ViewData {
-        ViewData { messages: vec![], channel: channel, debug: vec![], has_unread: false, unread_channels: vec![]}
+        ViewData { messages: vec![], channel: channel, has_unread: false, unread_channels: vec![], clock: 0}
     }
 
     pub fn add_message(&mut self, message: Message) {
@@ -21,7 +21,9 @@ impl ViewData {
     }
 
     pub fn add_debug(&mut self, string: String) {
-        self.debug.push(string);
+        let json = json!({"type": "debug", "text": (string)}).to_string();
+        let message = Message::new_from_str(&json).ok().expect("Could not parse message in add_debug");
+        self.messages.push(message);
     }
 
     pub fn update_unread(&mut self, view_datas: &Vec<ViewData>) {
@@ -49,6 +51,14 @@ mod test {
         other_view_data.has_unread = true;
         view_data.update_unread(&vec![other_view_data, other_view_data2]);
         assert_eq!(view_data.unread_channels.len(), 1);
+    }
+    
+    #[test]
+    fn test_add_debug() {
+        let mut view_data = ViewData::new(new_channel("Dev"));
+        view_data.add_debug("test".to_string());
+        let message = view_data.messages.last().unwrap();
+        assert_eq!(message.text.as_ref().unwrap(), "test")
     }
 
     fn new_channel(name: &str) -> Channel {

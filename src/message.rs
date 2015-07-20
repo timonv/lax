@@ -18,8 +18,10 @@ pub struct Message {
 
 }
 
-pub fn new_from_str(payload: &str) -> Result<Message, DecoderError> {
-    json::decode::<Message>(payload)
+impl Message {
+    pub fn new_from_str(payload: &str) -> Result<Message, DecoderError> {
+        json::decode::<Message>(payload)
+    }
 }
 
 impl Decodable for Message {
@@ -65,7 +67,7 @@ impl Message {
 
 #[cfg(test)]
 mod test {
-    use super::new_from_str;
+    use super::*;
 
     #[test]
     fn test_decode_from_json() {
@@ -76,12 +78,28 @@ mod test {
             \"ts\": \"today\",
             \"channel\": \"banter\"
         }";
-        let message = new_from_str(json).unwrap();
+        let message = Message::new_from_str(json).unwrap();
         assert_eq!(message.event_type.unwrap(), "message");
         assert_eq!(message.user_id.unwrap(), "Timon");
         assert_eq!(message.channel_id.unwrap(), "banter");
         assert_eq!(message.text.unwrap(), "Bananas!");
         assert_eq!(message.ts.unwrap(), "today");
+    }
+
+    #[test]
+    fn test_missing_values() {
+        let json = "{
+            \"user\": \"Timon\",
+            \"text\": \"Bananas!\",
+            \"ts\": null
+        }";
+        let message = Message::new_from_str(json).unwrap();
+        assert_eq!(message.event_type, None);
+        assert_eq!(message.user_id.unwrap(), "Timon");
+        assert_eq!(message.channel_id, None);
+        assert_eq!(message.text.unwrap(), "Bananas!");
+        assert_eq!(message.ts, None);
+
     }
 }
 

@@ -69,12 +69,6 @@ impl View {
         wprintw(self.messages, &string);
     }
 
-    pub fn print_debug(&self, string: &str) {
-        let string = "DEBUG: ".to_string() + &string + "\n";
-        wprintw(self.messages, &string);
-        wrefresh(self.messages);
-    }
-
     fn current_channel(&self) -> &Channel {
        &self.view_data
            .as_ref()
@@ -97,12 +91,10 @@ impl View {
     fn draw_unread(&self) {
         wclear(self.unread);
         let channels = &self.view_data.as_ref().unwrap().unread_channels;
-        self.print_debug(&format!("Unread channels: {}", channels.len()));
         attron(A_BOLD());
         wmove(self.unread, 0, 1);
         for channel in channels {
             wprintw(self.unread, &format!("#{}", channel.name));
-            self.print_debug(&format!("{}", channel.name));
             wmove(self.unread, 0, (channel.name.len() + 2) as i32);
         }
         attroff(A_BOLD());
@@ -124,13 +116,9 @@ impl View {
 
         wclear(self.messages);
 
-        // TODO extra debug iteration makes no sense
         let view_data = self.view_data.as_ref().unwrap();
         for message in view_data.messages.iter() {
             self.print_message(message)
-        }
-        for debug in view_data.debug.iter() {
-            self.print_debug(debug)
         }
 
         wrefresh(self.messages);

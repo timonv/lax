@@ -3,7 +3,7 @@ use rustc_serialize::json::{self, Json};
 
 use channel::{self, Channel};
 use user::{self, User};
-use message::{self, Message};
+use message::Message;
 
 pub struct CurrentState {
     me: User,
@@ -48,7 +48,7 @@ fn extract_channels(json: &str) -> Vec<Channel> {
 
 impl CurrentState {
     pub fn parse_incoming_message(&self, raw: &str) -> json::DecodeResult<Message> {
-        let mut message = try!(message::new_from_str(&raw));
+        let mut message = try!(Message::new_from_str(&raw));
         match message.channel_id {
             // I'm not sure I fully understand why the ref is needed.
             // The value is borrowed, but isn't it returned after going out of scope?
