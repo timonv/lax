@@ -45,6 +45,7 @@ fn main() {
     dispatcher.register_subscriber(&mut display, DispatchType::RawIncomingMessage);
     dispatcher.register_subscriber(&mut display, DispatchType::ChangeCurrentChannel);
     dispatcher.register_subscriber(&mut display, DispatchType::ListChannels);
+    dispatcher.register_subscriber(&mut display, DispatchType::UserInput); // wtf
     dispatcher.register_broadcaster(&mut display);
 
     display.start();

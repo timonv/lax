@@ -6,7 +6,7 @@ use user::{self, User};
 use message::Message;
 
 pub struct CurrentState {
-    me: User,
+    pub me: User,
     channels: Vec<Channel>,
     users: Vec<User>
 }

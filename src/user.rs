@@ -1,6 +1,6 @@
 use rustc_serialize::json::{self, DecoderError};
 
-#[derive(RustcDecodable, Clone, Debug)]
+#[derive(RustcDecodable, Clone, Debug, RustcEncodable)]
 pub struct User {
     pub id: String,
     pub name: String,

@@ -1,5 +1,6 @@
 use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
+use rustc_serialize::json;
 
 use input_parser;
 use channel::Channel;
@@ -8,6 +9,7 @@ use rdispatcher::{Subscribe, SubscribeHandle, DispatchMessage, Broadcast, Broadc
 use dispatch_type::DispatchType;
 use view::View;
 use view_data::ViewData;
+use message::Message;
 
 pub struct DisplayController<'a> {
    _view_guard: Option<thread::JoinGuard<'a, ()>>,
@@ -73,7 +75,8 @@ impl<'a> DisplayController<'a> {
                DispatchType::RawIncomingMessage   => handle_raw_incoming(&message.payload, &locked_state, &mut current_view_data, &mut all_view_data),
                DispatchType::ChangeCurrentChannel => handle_change_current_channel(&message.payload, &locked_state, &mut current_view_data, &mut all_view_data),
                DispatchType::ListChannels         => handle_list_channels(&message.payload, &locked_state, &mut current_view_data, &mut all_view_data),
-               _ => panic!("Got something I didn't expect: {:?}", message.payload)
+               DispatchType::UserInput            => handle_user_input(&message.payload, &locked_state, &mut current_view_data)
+               // _ => panic!("Got something I didn't expect: {:?}", message.payload)
             }
             current_view_data.update_unread(&all_view_data);
             view_tx.send(current_view_data.clone()).unwrap();
@@ -138,6 +141,22 @@ fn handle_change_current_channel(payload: &str, state: &CurrentState, mut curren
 fn handle_list_channels(payload: &str, state: &CurrentState, current_view_data: &mut ViewData, all_view_data: &mut Vec<ViewData>) {
    let channel_names = state.channel_names();
    current_view_data.add_debug(format!("Channels: {}", channel_names.connect(", ")));
+}
+
+fn handle_user_input(payload: &str, state: &CurrentState, current_view_data: &mut ViewData) {
+   let me = state.me.clone();
+   // Only interested in message, not channel
+   let (_, payload): (String, String) = json::decode(&payload).unwrap();
+   let message = Message {
+      ts: None,
+      text: Some(payload),
+      user: Some(me),
+      channel: None,
+      event_type: Some("message".to_string()),
+      user_id: None,
+      channel_id: None
+   };
+   current_view_data.add_message(message);
 }
 
 impl<'a> Subscribe<DispatchType> for DisplayController<'a> {

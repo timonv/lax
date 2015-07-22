@@ -60,7 +60,7 @@ impl Message {
     }
 
     fn fmt_as_debug(&self) -> String {
-        format!("DEBUG: {:?}", &self);
+        format!("DEBUG: {:?}", &self)
     }
 }
 
