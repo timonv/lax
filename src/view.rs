@@ -4,6 +4,9 @@ use view_data::ViewData;
 use message::Message;
 use channel::Channel;
 
+const LINE_BREAK: i32 = '\n' as i32;
+const BACKSPACE: i32 = 127; // ncurses KEY_BACKSPACE not working?
+
 pub struct View {
     messages: WINDOW,
     input: WINDOW,
@@ -36,7 +39,7 @@ impl View {
     // but couldn't get it to work
     pub fn init(&mut self, on_input: Box<Fn(String, String)>, view_data_rx: mpsc::Receiver<ViewData>) {
         self.draw_prompt();
-        let mut input = String::new();
+        let mut buffer = String::new();
         loop {
             match view_data_rx.try_recv() {
                 Ok(view_data) => {
@@ -47,21 +50,40 @@ impl View {
                 _ => ()
             }
 
-            let ch = wgetch(self.input);
-            if ch == ERR { continue };
-            if ch != '\n' as i32 && ch != '\r' as i32 {
-                // TODO This might send wrong keys
-                unsafe { input.as_mut_vec().push(ch as u8); }
-                mvwprintw(self.input, 1, (self.current_prompt().len() + 1) as i32, &input);
-                wrefresh(self.input);
-            } else {
-                on_input(input, self.current_channel().id.clone());
-                input = String::new();
-                self.draw_prompt();
+            match wgetch(self.input) {
+                ERR => continue,
+
+                LINE_BREAK  => {
+                    on_input(buffer, self.current_channel().id.clone());
+                    buffer = String::new();
+                    wclear(self.input);
+                    self.draw_prompt();
+                },
+
+                BACKSPACE => {
+                    if buffer.len() > 0 {
+                        buffer.pop();
+                        // Just redraw the whole thing to avoid crap
+                    }
+                    // for some reason backspaces get rendered regardles
+                    // of what this code does. So clear screen.
+                    wclear(self.input);
+                    self.draw_prompt();
+                    mvwprintw(self.input, 1, (self.current_prompt().len() + 1) as i32, &buffer);
+                    wrefresh(self.input);
+                },
+
+                ch @ _ => {
+                    // TODO why unsafe?
+                    unsafe { buffer.as_mut_vec().push(ch as u8); }
+                    // Just redraw the whole thing to avoid crap
+                    wclear(self.input);
+                    self.draw_prompt();
+                    mvwprintw(self.input, 1, (self.current_prompt().len() + 1) as i32, &buffer);
+                    wrefresh(self.input);
+                }
             }
         }
-        // Doesn't work
-        // mvwin(self.messages,1,1); // Padding for messages
     }
 
     pub fn print_message(&self, message: &Message) {
@@ -77,7 +99,6 @@ impl View {
     }
 
     fn draw_prompt(&self) {
-        wclear(self.input);
         let top = 0 as chtype;
         let bottom = ' ' as chtype;
         let empty = ' ' as chtype;
