@@ -109,10 +109,10 @@ fn handle_raw_incoming(payload: &str, state: &CurrentState, current_view_data: &
                }
 
             },
-            None => current_view_data.add_debug(format!("{}", parsed))
+            None => debug!("{}", parsed)
          }
       },
-      Err(err) => current_view_data.add_debug(format!("Failed to parse message {} and gave err: {}",payload, err))
+      Err(err) => debug!("Failed to parse message {} and gave err: {}",payload, err)
    };
 }
 

@@ -1,8 +1,10 @@
 #![feature(slice_patterns)] // drool
 #![feature(plugin)]
+#![feature(phase)]
 #![plugin(json_macros)]
 #![feature(convert)]
 #![feature(scoped)] // debugging > safety
+#![feature(rustc_private)]
 
 extern crate hyper;
 extern crate regex;
@@ -10,6 +12,9 @@ extern crate websocket;
 extern crate rustc_serialize;
 extern crate ncurses;
 extern crate rdispatcher;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 mod authentication;
 mod channel;
@@ -31,6 +36,10 @@ use std::thread;
 
 #[allow(dead_code)]
 fn main() {
+    env_logger::init().unwrap();
+    
+    info!("Started lax");
+
     let mut dispatcher = Dispatcher::new();
     let (token,_guard) = authentication::get_oauth_token_or_panic();
 

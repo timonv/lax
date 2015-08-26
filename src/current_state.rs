@@ -48,6 +48,7 @@ fn extract_channels(json: &str) -> Vec<Channel> {
 
 impl CurrentState {
     pub fn parse_incoming_message(&self, raw: &str) -> json::DecodeResult<Message> {
+        debug!("Incoming message: {}", raw);
         let mut message = try!(Message::new_from_str(&raw));
         match message.channel_id {
             // I'm not sure I fully understand why the ref is needed.
