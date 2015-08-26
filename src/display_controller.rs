@@ -11,16 +11,16 @@ use view::View;
 use view_data::ViewData;
 use message::Message;
 
-pub struct DisplayController<'a> {
-   _view_guard: Option<thread::JoinGuard<'a, ()>>,
-   _print_guard: Option<thread::JoinGuard<'a, ()>>,
+pub struct DisplayController {
+   _view_guard: Option<thread::JoinHandle<()>>,
+   _print_guard: Option<thread::JoinHandle<()>>,
    current_state: Arc<Mutex<CurrentState>>,
    subscribe_tx: mpsc::Sender<DispatchMessage<DispatchType>>,
    subscribe_rx: Arc<Mutex<mpsc::Receiver<DispatchMessage<DispatchType>>>>,
    broadcast_tx: Option<mpsc::Sender<DispatchMessage<DispatchType>>>
 }
 
-impl<'a> DisplayController<'a> {
+impl DisplayController {
    pub fn new(initial_state: &str) -> DisplayController {
       let initial_state = current_state::new_from_str(&initial_state);
       let (tx, rx) = mpsc::channel::<DispatchMessage<DispatchType>>();
@@ -46,7 +46,7 @@ impl<'a> DisplayController<'a> {
    fn spawn_view_loop(&mut self, view_rx: mpsc::Receiver<ViewData>) {
       let broadcast_tx = self.broadcast_tx.clone().expect("Expected broadcaster to be present in display controller");
 
-      let guard = thread::scoped(move || {
+      let guard = thread::spawn(move || {
          let mut view = View::new();
          let on_input = Box::new(move |string: String, channel_id: String| {
             let (payload, dtype) = input_parser::parse(string, channel_id);
@@ -63,7 +63,7 @@ impl<'a> DisplayController<'a> {
       let state = self.current_state.clone();
       let default_channel = self.default_channel();
 
-      let guard = thread::scoped(move || {
+      let guard = thread::spawn(move || {
          let mut all_view_data: Vec<ViewData> = vec![];
          let mut current_view_data = ViewData::new(default_channel);
             
@@ -159,13 +159,13 @@ fn handle_user_input(payload: &str, state: &CurrentState, current_view_data: &mu
    current_view_data.add_message(message);
 }
 
-impl<'a> Subscribe<DispatchType> for DisplayController<'a> {
+impl Subscribe<DispatchType> for DisplayController {
    fn subscribe_handle(&self) -> SubscribeHandle<DispatchType> {
       self.subscribe_tx.clone()
    }
 }
 
-impl<'a> Broadcast<DispatchType> for DisplayController<'a> {
+impl Broadcast<DispatchType> for DisplayController {
     fn broadcast_handle(&mut self) -> BroadcastHandle<DispatchType> {
         let (tx, rx) = mpsc::channel::<DispatchMessage<DispatchType>>();
         self.broadcast_tx = Some(tx);

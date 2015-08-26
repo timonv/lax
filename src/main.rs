@@ -27,6 +27,7 @@ use slack_stream::SlackStream;
 use display_controller::DisplayController;
 use dispatch_type::DispatchType;
 use rdispatcher::Dispatcher;
+use std::thread;
 
 #[allow(dead_code)]
 fn main() {
@@ -50,4 +51,6 @@ fn main() {
 
     display.start();
     dispatcher.start();
+
+    thread::park();
 }
