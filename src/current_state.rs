@@ -12,6 +12,7 @@ pub struct CurrentState {
 }
 
 pub fn new_from_str(json: &str) -> CurrentState {
+    debug!("NEW CURRENT STATE: {}", json);
     CurrentState {
         me: extract_me(&json),
         channels: extract_channels(&json),
