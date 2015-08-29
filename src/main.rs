@@ -27,6 +27,7 @@ mod slack_stream;
 mod user;
 mod view;
 mod view_data;
+#[cfg(test)] mod test_helpers;
 
 use slack_stream::SlackStream;
 use display_controller::DisplayController;
@@ -36,7 +37,7 @@ use std::thread;
 
 #[allow(dead_code)]
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init().ok().expect("[main] Could not start logger");
     
     info!("Started lax");
 

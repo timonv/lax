@@ -5,46 +5,55 @@ use channel::{self, Channel};
 use user::{self, User};
 use message::Message;
 
+pub type ParseResult<T> = Result<T, String>;
+
 pub struct CurrentState {
     pub me: User,
     channels: Vec<Channel>,
     users: Vec<User>
 }
 
-pub fn new_from_str(json: &str) -> CurrentState {
+pub fn new_from_str(json: &str) -> ParseResult<CurrentState> {
     debug!("NEW CURRENT STATE: {}", json);
-    CurrentState {
-        me: extract_me(&json),
-        channels: extract_channels(&json),
-        users: extract_users(&json),
-    }
+    Ok(CurrentState {
+        me: try!(extract_me(&json)),
+        channels: try!(extract_channels(&json)),
+        users: try!(extract_users(&json)),
+    })
 }
 
-
-fn extract_me(json: &str) -> User {
-    // Hideous, maybe better to just manually implement decodable?
-    // also use try! instead.
-    let json = Json::from_str(json).unwrap();
-    let val = json.find("self").unwrap();
-    user::new_from_str(json::encode(&val.as_object()).unwrap().as_ref()).unwrap()
+//Experiment with different styles of unwrap cleanup
+fn extract_me(json: &str) -> ParseResult<User> {
+    let json = try!(Json::from_str(json).map_err(|e| e.to_string()));
+    json.find("self").ok_or("[current_state] Could not find self".to_string())
+        .and_then( |json_self| json::encode(&json_self.as_object()).map_err(|e| e.to_string()))
+        .and_then( |encoded| user::new_from_str(&encoded).map_err(|e| e.to_string()))
 }
 
-fn extract_users(json: &str) -> Vec<User> {
-    // Hideous, maybe better to just manually implement decodable?
-    // also use try! instead.
-    let json = Json::from_str(json).unwrap();
-    json.find("users").unwrap().as_array().unwrap().iter().map(|user| {
-        user::new_from_str(json::encode(user.as_object().unwrap()).unwrap().as_ref()).unwrap()
-    }).collect()
+fn extract_users(json: &str) -> ParseResult<Vec<User>> {
+    let json = try!(Json::from_str(json).map_err(|e| e.to_string()));
+    Ok(json.find("users")
+        .expect("Could not find users")
+        .as_array()
+        .expect("Expected array")
+        .iter()
+        .map(|user| {
+            let encoded = json::encode(user.as_object().unwrap()).unwrap();
+            user::new_from_str(&encoded).unwrap()
+        }).collect())
 }
 
-fn extract_channels(json: &str) -> Vec<Channel> {
-    // Hideous, maybe better to just manually implement decodable?
-    // also use try! instead.
+fn extract_channels(json: &str) -> ParseResult<Vec<Channel>> {
     let json = Json::from_str(json).unwrap();
-    json.find("channels").unwrap().as_array().unwrap().iter().map(|channel| {
-        channel::new_from_str(json::encode(channel.as_object().unwrap()).unwrap().as_ref()).unwrap()
-    }).collect()
+    Ok(json.find("channels")
+       .expect("Could not find channels")
+       .as_array()
+       .unwrap()
+       .iter()
+       .map(|channel| {
+           let encoded = json::encode(channel.as_object().unwrap()).unwrap();
+           channel::new_from_str(&encoded).unwrap()
+    }).collect())
 }
 
 impl CurrentState {
@@ -92,10 +101,11 @@ impl CurrentState {
 #[cfg(test)]
 mod test {
     use super::new_from_str;
+    use test_helpers::*;
 
     #[test]
     fn test_new_current_state_from_str() {
-        let state = new_from_str(&generate_json());
+        let state = setup_current_state();
         assert_eq!(state.me.name, "bobby");
         assert_eq!(state.users[0].name, "Matijs");
         assert_eq!(state.channels[0].name, "General");
@@ -103,21 +113,21 @@ mod test {
 
     #[test]
     fn test_id_to_user() {
-        let state = new_from_str(&generate_json());
+        let state = setup_current_state();
         let user = state.id_to_user("xyz");
         assert_eq!(user.unwrap().name, "Matijs");
     }
 
     #[test]
     fn test_id_to_channel() {
-        let state = new_from_str(&generate_json());
+        let state = setup_current_state();
         let channel = state.id_to_channel("zyx");
         assert_eq!(channel.unwrap().name, "General");
     }
 
     #[test]
     fn test_parse_incoming_message() {
-        let state = new_from_str(&generate_json());
+        let state = setup_current_state();
         let json = "{
             \"type\": \"message\",
             \"user\": \"xyz\",
@@ -133,66 +143,15 @@ mod test {
 
     #[test]
     fn test_name_to_channel() {
-        let state = new_from_str(&generate_json());
+        let state = setup_current_state();
         let channel = state.name_to_channel("General").expect("Could not find channel");
         assert_eq!(channel.name, "General");
     }
 
     #[test]
     fn test_channel_names() {
-        let state = new_from_str(&generate_json());
+        let state = setup_current_state();
         assert_eq!(state.channel_names(), vec!["General", "Dev"]);
     }
 
-    fn generate_json() -> String {
-        "{
-            \"ok\": true,
-            \"url\": \"wss://ms9.slack-msgs.com/websocket/7I5yBpcvk\",
-            \"self\": {
-                \"id\": \"U023BECGF\",
-                \"name\": \"bobby\",
-                \"prefs\": {
-                },
-                \"created\": 1402463766,
-                \"manual_presence\": \"active\"
-            },
-            \"team\": {
-                \"id\": \"T024BE7LD\",
-                \"name\": \"Example Team\",
-                \"email_domain\": \"\",
-                \"domain\": \"example\",
-                \"msg_edit_window_mins\": -1,
-                \"over_storage_limit\": false,
-                \"prefs\": {
-                },
-                \"plan\": \"std\"
-            },
-            \"users\": [
-                {
-                    \"id\": \"xyz\",
-                    \"name\": \"Matijs\"
-                }
-            ],
-            \"channels\": [
-                {
-                    \"id\": \"zyx\",
-                    \"name\": \"General\",
-                    \"members\": [],
-                    \"is_member\": false,
-                    \"is_general\": false
-                },
-                {
-                    \"id\": \"xyz\",
-                    \"name\": \"Dev\",
-                    \"members\": [],
-                    \"is_member\": false,
-                    \"is_general\": false
-                }
-
-            ],
-            \"groups\": [ ],
-            \"ims\": [ ],
-            \"bots\": [ ]
-        }".to_string()
-    }
 }

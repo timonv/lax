@@ -111,7 +111,7 @@ impl View {
 
     fn draw_unread(&self) {
         wclear(self.unread);
-        let channels = &self.view_data.as_ref().unwrap().unread_channels;
+        let channels = &self.view_data.as_ref().expect("[view] Expected view data for unread").unread_channels;
         attron(A_BOLD());
         wmove(self.unread, 0, 1);
         for channel in channels {
@@ -137,7 +137,7 @@ impl View {
 
         wclear(self.messages);
 
-        let view_data = self.view_data.as_ref().unwrap();
+        let view_data = self.view_data.as_ref().expect("[view] Expected view data for redraw");
         for message in view_data.messages.iter() {
             self.print_message(message)
         }

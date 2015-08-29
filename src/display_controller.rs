@@ -22,7 +22,7 @@ pub struct DisplayController {
 
 impl DisplayController {
    pub fn new(initial_state: &str) -> DisplayController {
-      let initial_state = current_state::new_from_str(&initial_state);
+      let initial_state = current_state::new_from_str(&initial_state).unwrap();
       let (tx, rx) = mpsc::channel::<DispatchMessage<DispatchType>>();
 
       DisplayController {
@@ -51,7 +51,7 @@ impl DisplayController {
          let on_input = Box::new(move |string: String, channel_id: String| {
             let (payload, dtype) = input_parser::parse(string, channel_id);
             let message = DispatchMessage { payload: payload, dispatch_type: dtype };
-            broadcast_tx.send(message).unwrap();
+            broadcast_tx.send(message).ok().expect("[on_input] Could not send input");
          });
          view.init(on_input, view_rx);
       });
@@ -79,7 +79,7 @@ impl DisplayController {
                // _ => panic!("Got something I didn't expect: {:?}", message.payload)
             }
             current_view_data.update_unread(&all_view_data);
-            view_tx.send(current_view_data.clone()).unwrap();
+            view_tx.send(current_view_data.clone()).ok().expect("[print_loop] Could not send view data to view");
          }
       });
       self._print_guard = Some(guard);
@@ -146,7 +146,7 @@ fn handle_list_channels(payload: &str, state: &CurrentState, current_view_data: 
 fn handle_user_input(payload: &str, state: &CurrentState, current_view_data: &mut ViewData) {
    let me = state.me.clone();
    // Only interested in message, not channel
-   let (_, payload): (String, String) = json::decode(&payload).unwrap();
+   let (_, payload): (String, String) = json::decode(&payload).ok().expect(&format!("[display_controller] Could not parse payload {}", payload));
    let message = Message {
       ts: None,
       text: Some(payload),
